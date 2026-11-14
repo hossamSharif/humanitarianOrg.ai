@@ -44,6 +44,11 @@ their offices unless granted organization-wide access.
 - Q: What happens to pending PRs when their grant is Suspended or Closed? → A: They freeze: no step can be signed until the grant is Active again; reservations stay held; return, reject, and cancel remain available; admins see the affected-PR count when changing status.
 - Q: If rates change between submission and approval, which rate applies? → A: Rate (latest on or before PR date) is locked at submission and reused through approval; refreshed only on resubmission after Return.
 - Q: After a Return, can a user who signed a step in an earlier cycle sign again? → A: Yes, but only the same step; they cannot sign a different step of that PR in any cycle, and never two steps in one cycle.
+- Q: Which year does the PR number use (calendar or fiscal; PR date or submission date)? → A: Calendar year of the submission date (server date in the organization's time zone).
+- Q: How far may the PR date differ from the submission date? → A: At most 30 days before submission (organization setting, default 30) and never in the future; otherwise submission is blocked.
+- Q: Can a PR charge a grant that does not operate in the PR's requesting office? → A: No; only grants whose operating offices include the requesting office can be selected and submitted.
+- Q: Besides the requester, who can cancel a pending or returned PR? → A: Any user with `pr:cancel_approved`, with a reason.
+- Q: Can Finance edit or delete an exchange rate already used by a submitted PR? → A: No; a used rate is locked. Corrections are entered as a new rate (same date allowed; the latest-entered rate for a date wins).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -51,11 +56,12 @@ their offices unless granted organization-wide access.
 
 An Organization Admin sets up the organization so procurement runs on its real structure:
 organization profile (name in Arabic and English, logo, address, contact, base currency —
-default SDG — and fiscal year start); offices/locations (e.g. Madani, Kosti, Gadaref, Port Sudan)
+default SDG — fiscal year start, and maximum PR backdating period — default 30 days); offices/locations (e.g. Madani, Kosti, Gadaref, Port Sudan)
 with bilingual name, short code, address, and phone; a units-of-measure list (PCs, PAK, Person,
 Day, Kg, Liter…) seeded with defaults and editable; and document numbering per document type
 (prefix, whether office code and year are included, padding). The default PR format is
-`PR-{OFFICE}-{YYYY}-{0000}`, with the sequence resetting each year per office.
+`PR-{OFFICE}-{YYYY}-{0000}`, with the sequence resetting each calendar year per office; the year
+is that of the submission date, not the PR date.
 
 **Why this priority**: Nothing else can be created until the organization, offices, units, and
 numbering exist.
@@ -104,8 +110,8 @@ an exchange rate; confirm budget figures display correctly and the grant is sele
 1. **Given** a grant in USD with a budget line of 10,000 USD, **When** a PR in SDG is approved,
    **Then** the commitment is converted to USD using the stored rate, and the rate, rate date,
    and source are saved on the PR.
-2. **Given** a grant is Closed or Suspended, **When** a user creates a PR, **Then** that grant
-   cannot be selected.
+2. **Given** a grant is Closed or Suspended, or does not operate in the PR's requesting office,
+   **When** a user creates a PR, **Then** that grant cannot be selected.
 3. **Given** a PR date outside the grant start/end dates, **When** the requester submits,
    **Then** submission is blocked.
 4. **Given** budget lines whose total differs from the grant total, **When** the grant is
@@ -232,8 +238,9 @@ different users and confirm signatures, status, and budget commitment.
 
 ### User Story 6 - Cancel a PR (Priority: P2)
 
-The requester can cancel their own PR before final approval (reason required); any reservation
-it holds is released. An approved PR can be cancelled only by a user with `pr:cancel_approved`,
+The requester can cancel their own PR before final approval (reason required); a user with
+`pr:cancel_approved` can also cancel it, for example when the requester is unavailable. Any
+reservation it holds is released. An approved PR can be cancelled only by a user with `pr:cancel_approved`,
 with a reason; its commitment is released from the budget lines. Cancelled PRs remain visible with full history.
 
 **Why this priority**: Needed for real operations but not for the first approved PR.
@@ -323,10 +330,15 @@ notifications, and the budget status report figures.
   status, the admin is warned with the number of pending PRs affected.
 - A grant's dates are changed so they no longer cover a pending PR's date → approval is blocked
   (Business Rule 1 is rechecked at each step).
+- A PR date later than the submission date, or more than the configured backdating period
+  (default 30 days) before it, → submission is blocked; the check is repeated on resubmission.
 - A deleted draft never consumed a number, so deleting drafts creates no gaps in PR numbering.
 - An office code used by existing documents cannot be changed.
 - Finance enters a new or corrected exchange rate after a PR is submitted → the pending PR keeps
   its locked rate and amounts; the new rate applies only if the PR is returned and resubmitted.
+- Finance mistypes a rate that a submitted PR already used → the rate cannot be edited or deleted;
+  Finance enters a corrected rate for the same date with a source note, and it applies to later
+  submissions and resubmissions.
 
 ## Requirements *(mandatory)*
 
@@ -335,13 +347,15 @@ notifications, and the budget status report figures.
 **Organization & configuration**
 
 - **FR-001**: System MUST let an Organization Admin maintain an organization profile: name
-  (Arabic and English), logo, address, contact, base currency (default SDG), fiscal year start.
+  (Arabic and English), logo, address, contact, base currency (default SDG), fiscal year start,
+  and maximum PR backdating period in days (default 30).
 - **FR-002**: System MUST let admins maintain offices/locations with bilingual name, unique short
   code, address, and phone, and MUST block changing a code already used by documents.
 - **FR-003**: System MUST provide an editable units-of-measure list, seeded with defaults.
 - **FR-004**: System MUST let admins configure document numbering per document type (prefix,
   include office code, include year, padding), defaulting PRs to `PR-{OFFICE}-{YYYY}-{0000}` with
-  a sequence per office per year.
+  a sequence per office per calendar year, where the year is the calendar year of the submission
+  date in the organization's time zone (not the PR date).
 - **FR-005**: All configuration changes MUST be recorded in history and MUST NOT alter documents
   already submitted or approved.
 - **FR-006**: Each organization's data MUST be completely isolated from every other
@@ -368,7 +382,9 @@ notifications, and the budget status report figures.
 - **FR-014**: System MUST block reducing a budget line's amount below its Reserved + Committed +
   Actual.
 - **FR-015**: System MUST let Finance record manual exchange rates (currency, rate to base
-  currency, date, source note) and MUST use the latest rate on or before a document's date.
+  currency, date, source note) and MUST use the latest rate on or before a document's date; when
+  several rates share that date, the most recently entered one applies. A rate used by any
+  submitted PR MUST NOT be edited or deleted; unused rates may be edited or deleted (logged).
 
 **Users, roles, approval rules**
 
@@ -389,8 +405,9 @@ notifications, and the budget status report figures.
 
 - **FR-021**: Requesters MUST be able to create PRs with the header, lines, and attachments
   listed in User Story 4; line totals and PR total MUST be calculated.
-- **FR-022**: Only Active grants whose start/end dates cover the PR date MUST be selectable and
-  accepted at submission and at every approval step. Pending PRs of a Suspended or Closed grant
+- **FR-022**: Only Active grants whose start/end dates cover the PR date and whose operating
+  offices include the PR's requesting office MUST be selectable and accepted at submission and at
+  every approval step. Pending PRs of a Suspended or Closed grant
   MUST keep their reservations and MUST remain returnable, rejectable, and cancellable, but no
   approval step may be signed; changing a grant's status MUST warn with the count of pending PRs
   affected.
@@ -400,7 +417,8 @@ notifications, and the budget status report figures.
 - **FR-024**: Drafts MUST autosave and MUST be editable and deletable only by their creator;
   drafts do not consume a PR number.
 - **FR-025**: On submission, the system MUST validate: at least one line and a non-zero total;
-  required-by date ≥ PR date; grant validity (FR-022); an exchange rate available for every
+  PR date not after the submission date and not more than the organization's maximum backdating
+  period (default 30 days) before it; required-by date ≥ PR date; grant validity (FR-022); an exchange rate available for every
   line currency; and, per budget line, PR total converted to grant currency ≤ Available. Failing
   lines MUST be highlighted with the shortfall.
 - **FR-026**: On first submission, the PR MUST receive its permanent number, which is unique per
@@ -448,7 +466,9 @@ notifications, and the budget status report figures.
 
 **Cancellation**
 
-- **FR-041**: Requesters MUST be able to cancel their own PR before final approval with a reason.
+- **FR-041**: Requesters MUST be able to cancel their own PR before final approval with a reason;
+  users with `pr:cancel_approved` MUST also be able to cancel any pending or returned PR they can
+  see, with a reason, and the requester MUST be notified.
 - **FR-042**: Only users with `pr:cancel_approved` MUST be able to cancel an approved PR, with a
   reason; the commitment MUST be released.
 - **FR-043**: PRs that have left Draft MUST never be deleted; Cancelled and Rejected PRs remain

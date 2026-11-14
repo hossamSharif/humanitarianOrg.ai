@@ -99,7 +99,8 @@ with the changes listed in `docs/plan001.md`.
   `insert … on conflict do update set last_value = document_sequence.last_value + 1 returning last_value`.
   The number is formatted from `numbering_config` (prefix, include office code, include year,
   padding) and stored on the PR with a unique `(tenant_id, number)` constraint. Assigned only at
-  first submission; resubmission after Return keeps it. Year = calendar year of the PR date.
+  first submission; resubmission after Return keeps it. Year = calendar year of the submission
+  date in the tenant's timezone (clarification 2026-11-14), so numbers follow submission order.
 - **Rationale**: The row lock gives gap-free, never-reused numbers per office/year; a rolled-back
   submit does not consume a number (unlike Postgres `SEQUENCE`), and deleted drafts never had
   one (FR-024, FR-026, SC-007).

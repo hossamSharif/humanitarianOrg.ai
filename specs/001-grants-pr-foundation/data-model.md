@@ -35,6 +35,7 @@ Postgres (Supabase). Conventions for every table unless stated otherwise:
 | doa_reference_currency | char(3) | FK `currency.code`, default `USD` |
 | fiscal_year_start_month | smallint | 1–12, default 1 |
 | timezone | text | default `Africa/Khartoum` |
+| max_backdate_days | smallint | 0–365, default 30; PR date may be at most this many days before the submission date (FR-025) |
 
 No `tenant_id` (it is the tenant). RLS: `id = app.current_tenant_id()`; update requires
 `settings:manage`.
@@ -255,11 +256,15 @@ office must be one of them.
 | tenant_id | uuid | |
 | currency | char(3) | FK `currency`; ≠ tenant base currency |
 | rate_to_base | numeric(18,6) | > 0; 1 unit of `currency` = rate × base |
-| rate_date | date | unique `(tenant_id, currency, rate_date)` |
+| rate_date | date | several rows per `(tenant_id, currency, rate_date)` allowed (corrections); index `(tenant_id, currency, rate_date desc, created_at desc)` |
 | source | text | e.g. "Central Bank of Sudan", "Bank of Khartoum parallel" |
 
-Lookup: latest `rate_date <= document date` for the currency. Edits are audited and never affect
-submitted PRs (values are copied at submission).
+Lookup: latest `rate_date <= document date` for the currency; among rows with that date, the
+latest `created_at` wins. A rate referenced by any PR (`pr_line.exchange_rate_id`,
+`purchase_requisition.doa_exchange_rate_id` / `grant_exchange_rate_id`) is locked: a BEFORE
+UPDATE/DELETE trigger raises `EXCHANGE_RATE_IN_USE` (FKs are also `on delete restrict`).
+Corrections are new rows. Edits and deletes of unused rates are audited; submitted PRs keep
+their copied values (FR-015, FR-028).
 
 ---
 
@@ -290,8 +295,8 @@ submitted PRs (values are copied at submission).
 | current_step_order | smallint null | pending step, null otherwise |
 | doa_currency | char(3) null | locked at submission |
 | doa_amount | numeric(18,2) null | PR total in DoA currency, locked at submission |
-| doa_rate_to_base, doa_rate_date, doa_rate_source | numeric(18,6), date, text | for DoA currency |
-| grant_rate_to_base, grant_rate_date, grant_rate_source | numeric(18,6), date, text | for grant currency (1 if base) |
+| doa_rate_to_base, doa_rate_date, doa_rate_source, doa_exchange_rate_id | numeric(18,6), date, text, uuid null | for DoA currency (id null when base) |
+| grant_rate_to_base, grant_rate_date, grant_rate_source, grant_exchange_rate_id | numeric(18,6), date, text, uuid null | for grant currency (1 / id null if base) |
 | total_grant_currency | numeric(18,2) null | sum of line `amount_grant`, locked at submission |
 | submitted_at, approved_at, closed_at | timestamptz null | |
 | cancel_reason, reject_reason, return_reason | text null | latest reason (history keeps all) |
@@ -441,18 +446,18 @@ rows older than 24 h are purged.
       ▲                                                 │                                      │
       │ return (reason; release)  ◀─── from either pending state                               │ cancel
       │ reject (reason; release) ───▶ rejected (final)                                         │ (pr:cancel_approved,
-      │ cancel (requester, reason; release) ───▶ cancelled (final)  ◀──────────────────────────┘  reason; release)
+      │ cancel (req. or cancel_approved) ──────▶ cancelled (final)  ◀──────────────────────────┘  reason; release)
 ```
 
 | From | Action | Actor | Guard | Effect |
 |---|---|---|---|---|
 | draft | update / delete | creator | — | delete only if never submitted |
-| draft, returned | submit | creator (`pr:create`) | Rules: ≥ 1 line, total > 0, required-by ≥ PR date, grant active & covers PR date, requesting office in grant offices, rates for all line currencies + grant + DoA currency, per budget line Σ amount_grant ≤ available, every step has ≥ 1 eligible user | lock rates, compute amounts, number (first time), `cycle+1`, create steps, reserve, notify step 1 users |
+| draft, returned | submit | creator (`pr:create`) | Rules: ≥ 1 line, total > 0, submission date − `max_backdate_days` ≤ PR date ≤ submission date, required-by ≥ PR date, grant active & covers PR date, requesting office in grant offices, rates for all line currencies + grant + DoA currency, per budget line Σ amount_grant ≤ available, every step has ≥ 1 eligible user | lock rates, compute amounts, number (first time; year = calendar year of the submission date in tenant timezone), `cycle+1`, create steps, reserve, notify step 1 users |
 | pending_finance_check | change_budget_line | eligible finance checker | same grant, availability on target line excluding this PR's own reservation | move reservation, log action |
 | pending_* | approve | eligible user of current step | grant active & covers PR date; not creator; not signer of another step; PR not frozen | sign; advance step (notify) or, on final step, `reserved → committed`, status `approved`, notify requester |
 | pending_* | reject | eligible user of current step | reason | release, status `rejected`, notify requester |
 | pending_* | return | eligible user of current step | reason | release, status `returned`, steps closed, notify requester |
-| pending_*, returned | cancel | creator | reason | release (if reserved), status `cancelled` |
+| pending_*, returned | cancel | creator, or `pr:cancel_approved` | reason | release (if reserved), status `cancelled`; notify requester `pr_cancelled` when cancelled by someone else |
 | approved | cancel | `pr:cancel_approved` | reason | `committed → released`, status `cancelled` |
 | pending_* | reassign | `pr:reassign` (admin) | new user eligible for the step | set `assigned_user_id`, log, notify new user |
 

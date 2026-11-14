@@ -62,7 +62,7 @@ used only for Auth admin calls (invite, set `app_metadata`) and never for busine
 | `pr:create` | create, edit own drafts, submit, cancel own PRs |
 | `pr:finance_check` | eligible for `finance_check` steps (role on the step still required) |
 | `pr:approve` | eligible for `approval` / `final_approval` steps (role on the step still required) |
-| `pr:cancel_approved` | cancel approved PRs |
+| `pr:cancel_approved` | cancel approved PRs, and pending or returned PRs of other requesters |
 | `pr:reassign` | reassign pending approval steps |
 | `audit:read` | read history of configuration records |
 

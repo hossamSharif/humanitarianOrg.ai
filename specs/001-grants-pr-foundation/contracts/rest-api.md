@@ -39,6 +39,8 @@ shared by API and web; this document is the human-readable contract.
 | 422 | `BUDGET_BELOW_USAGE` | reducing a budget line below reserved + committed + actual; `details: { minimum }` |
 | 422 | `GRANT_NOT_ACTIVE` | grant suspended/closed (selection or signing) |
 | 422 | `GRANT_PERIOD_MISMATCH` | PR date outside grant dates |
+| 422 | `PR_DATE_OUT_OF_RANGE` | PR date in the future or more than `maxBackdateDays` before submission; `details: { prDate, earliest, latest }` |
+| 409 | `EXCHANGE_RATE_IN_USE` | editing or deleting a rate used by a PR; enter a corrected rate instead |
 | 422 | `GRANT_OFFICE_MISMATCH` | requesting office not in grant offices |
 | 422 | `EXCHANGE_RATE_MISSING` | `details: { currencies: ['USD'], date }` |
 | 422 | `PR_EMPTY` | no lines or zero total |
@@ -58,7 +60,7 @@ shared by API and web; this document is the human-readable contract.
 | GET | `/me` | auth | user, active membership, memberships list, permissions[], offices[], orgWideAccess |
 | POST | `/session/tenant` | auth | `{ tenantId }` — must have active membership; sets `app_metadata.tenant_id`; client refreshes session |
 | POST | `/tenants` | auth | create organization (bootstrap) → seeds defaults (data-model §8); caller becomes admin |
-| GET / PATCH | `/tenant` | read: member / write: `settings:manage` | profile: names, logo, address, contact, baseCurrency, doaReferenceCurrency, fiscalYearStartMonth, timezone |
+| GET / PATCH | `/tenant` | read: member / write: `settings:manage` | profile: names, logo, address, contact, baseCurrency, doaReferenceCurrency, fiscalYearStartMonth, timezone, maxBackdateDays |
 | POST | `/tenant/logo-upload-url` | `settings:manage` | signed upload URL |
 
 ## Offices, units, numbering
@@ -99,8 +101,8 @@ shared by API and web; this document is the human-readable contract.
 | POST | `/grants/:id/budget-lines/import?mode=preview\|commit` | `grants:manage` | multipart `file` (.xlsx/.csv, ≤ 5 MB, columns `code, description, category, amount`); response `{ validRows: [...], invalidRows: [{ row, values, errors: [{ column, code }] }], created? }`; commit inserts all valid rows in one transaction |
 | GET / POST / PATCH | `/grants/:id/activities`, `/activities/:id` | read: member / write: `grants:manage` | |
 | GET | `/exchange-rates` | member | `?currency=&from=&to=` |
-| GET | `/exchange-rates/lookup?currency=USD&date=2026-11-10` | member | latest on or before date, or `404` |
-| POST / PATCH | `/exchange-rates`, `/exchange-rates/:id` | `rates:manage` | `{ currency, rateToBase, rateDate, source }` |
+| GET | `/exchange-rates/lookup?currency=USD&date=2026-11-10` | member | latest on or before date (latest-entered wins on the same date), or `404` |
+| POST / PATCH / DELETE | `/exchange-rates`, `/exchange-rates/:id` | `rates:manage` | `{ currency, rateToBase, rateDate, source }`; PATCH/DELETE of a rate used by a PR → `409 EXCHANGE_RATE_IN_USE`; each item returns `inUse` |
 
 ## Purchase requisitions
 
@@ -121,7 +123,7 @@ shared by API and web; this document is the human-readable contract.
 | POST | `/prs/:id/reject` | eligible for current step | `{ expectedVersion, stepId, reason }` |
 | POST | `/prs/:id/return` | eligible for current step | `{ expectedVersion, stepId, reason }` |
 | POST | `/prs/:id/lines/:lineId/budget-line` | eligible finance checker, status `pending_finance_check` | `{ expectedVersion, budgetLineId, comment? }` → recheck availability (excluding this PR's own reservation), move reservation |
-| POST | `/prs/:id/cancel` | creator (before approval) or `pr:cancel_approved` (approved) | `{ expectedVersion, reason }` |
+| POST | `/prs/:id/cancel` | creator (before approval) or `pr:cancel_approved` (pending, returned, or approved) | `{ expectedVersion, reason }` |
 | POST | `/prs/:id/steps/:stepId/reassign` | `pr:reassign` | `{ expectedVersion, userId, reason }` — target must be eligible |
 | GET | `/prs/:id/history` | `pr:read` | timeline entries `{ at, actor: { name, position }, action, fromState, toState, comment, changes: [{ field, from, to }] }` |
 | GET | `/prs/:id/print` | `pr:read` | print data for PDF ([print-layout.md](./print-layout.md)); includes `watermark`, amount in words (ar, en), signature blocks |

@@ -96,3 +96,6 @@ be **870,710 SDG**, all lines on budget line `10202`, donor ADRA, office Madani.
   and releases the reservation.
 - Import a budget spreadsheet with one bad category row → preview lists the row and reason;
   commit creates only valid rows; codes like `2.2.31` and `010` stay exactly as typed.
+- Submit a PR dated tomorrow, or 31 days ago → `PR_DATE_OUT_OF_RANGE`.
+- Edit the SDG→USD rate used by the submitted sample PR → `EXCHANGE_RATE_IN_USE`; enter a
+  corrected rate for the same date instead → later submissions use it.
