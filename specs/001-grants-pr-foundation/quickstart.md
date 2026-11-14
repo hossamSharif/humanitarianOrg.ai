@@ -12,6 +12,16 @@ How to run the feature locally and prove it works end to end. Endpoint details l
 - **Before `/speckit-implement`**: confirm Supabase MCP (migrations, type generation) and Ref MCP
   are configured, and Chrome DevTools MCP connects (it timed out during planning). Until Supabase
   MCP is available, the Supabase CLI is the fallback for applying migrations (research R20).
+- **Tooling gate (T013, checked 2026-11-14 on the dev machine)**:
+
+  | Need | Preferred | Fallback | Status |
+  |---|---|---|---|
+  | Apply migrations, generate types | Supabase MCP | Supabase CLI + `pnpm --filter @ngo/database migrate` (applies `packages/database/migrations/*.sql` via the `postgres` driver and records them in `supabase_migrations.schema_migrations`) | **Blocked**: Supabase MCP exposes no tools in the session; Docker is not installed, so `npx supabase start` cannot run. Unblock with Docker Desktop (local stack) **or** a Supabase cloud dev project (`DATABASE_URL` + `supabase gen types --project-id`) |
+  | UI verification, screenshots | Chrome DevTools MCP | Playwright (`@playwright/test` screenshots) | Chrome DevTools MCP and Playwright MCP both timed out; Playwright test runner is the chosen path (see below) |
+
+  Machine notes: Node 26 is installed (the plan targets Node 20; `.nvmrc` pins 20). pnpm is not
+  installed globally and Node 26 ships without corepack; run `npx pnpm@8.15.9 <cmd>` or
+  `npm i -g pnpm@8.15.9`. The Supabase CLI is not a workspace dependency (its binary download is large); scripts call it with `npx -y supabase@2`.
 - Copy `.env.example` → `.env.local` in `apps/api` and `apps/web`; fill values printed by
   `supabase start`. No secrets are committed.
 

@@ -1,0 +1,21 @@
+node_modules/
+dist/
+build/
+.next/
+.turbo/
+coverage/
+playwright-report/
+test-results/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+*.min.js
+*.min.css
+packages/database/src/types.ts
+supabase/.temp/
+
+# Spec Kit documents and agent config are hand-edited prose, not formatted code.
+specs/
+docs/
+.specify/
+.claude/

@@ -1,0 +1,17 @@
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/coverage
+**/playwright-report
+**/test-results
+**/.env*
+!**/.env.example
+**/*.log
+.git
+apps/web
+specs
+docs
+supabase/.temp
+*.xlsx
+*.jpeg

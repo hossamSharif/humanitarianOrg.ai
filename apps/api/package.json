@@ -1,0 +1,43 @@
+{
+  "name": "@ngo/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch --env-file=.env.local src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "lint": "eslint src tests",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --project unit --passWithNoTests",
+    "test:unit": "vitest run --project unit --passWithNoTests",
+    "test:integration": "vitest run --project integration --passWithNoTests",
+    "test:watch": "vitest --project unit"
+  },
+  "dependencies": {
+    "@ngo/database": "workspace:*",
+    "@ngo/shared": "workspace:*",
+    "@supabase/supabase-js": "^2.45.0",
+    "cors": "^2.8.5",
+    "decimal.js": "^10.4.3",
+    "exceljs": "^4.4.0",
+    "express": "~4.18.3",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
+    "jose": "^5.6.0",
+    "postgres": "^3.4.4",
+    "zod": "~3.22.4"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.0",
+    "@types/supertest": "^6.0.2",
+    "supertest": "^7.0.0",
+    "tsup": "^8.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}

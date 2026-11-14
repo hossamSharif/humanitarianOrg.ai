@@ -1,0 +1,32 @@
+# Fly.io config for @ngo/api. Deploy from the repo root:
+#   fly deploy --config apps/api/fly.toml --dockerfile apps/api/Dockerfile
+# Secrets (SUPABASE_*, DATABASE_URL, CORS_ORIGINS) are set with `fly secrets set`, never here.
+
+app = 'ngo-procurement-api'
+primary_region = 'fra'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  NODE_ENV = 'production'
+  PORT = '4000'
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/api/v1/health'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '512mb'
