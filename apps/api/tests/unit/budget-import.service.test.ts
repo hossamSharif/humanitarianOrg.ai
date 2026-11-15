@@ -81,7 +81,9 @@ describe('reading cells as text (FR-009)', () => {
   });
 
   it('CSV: quoted fields, embedded commas, BOM, CRLF; codes stay text', () => {
-    expect(parseCsv('\uFEFFcode,description\r\n"010","Kits, family"\r\n2.2.31,"Say ""hi"""\n')).toEqual([
+    expect(
+      parseCsv('\uFEFFcode,description\r\n"010","Kits, family"\r\n2.2.31,"Say ""hi"""\n')
+    ).toEqual([
       ['code', 'description'],
       ['010', 'Kits, family'],
       ['2.2.31', 'Say "hi"'],
