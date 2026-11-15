@@ -14,11 +14,14 @@ import { requestId } from './middleware/request-id';
 import { tenantContext, type SessionContextLoader } from './middleware/tenant';
 import { healthRouter, tenantRouter } from './routes';
 import { sessionRouter } from './routes/session.routes';
+import { tenantBootstrapRouter } from './routes/tenant.routes';
 import type { SessionService } from './services/session.service';
+import type { TenantSetupService } from './services/tenant-setup.service';
 
 export interface AppOptions {
   corsOrigins?: string[];
   sessionService?: SessionService;
+  tenantSetupService?: TenantSetupService;
   loadSessionContext?: SessionContextLoader;
   idempotencyStore?: IdempotencyStore;
   rateLimit?: { perMinute?: number; writesPerMinute?: number };
@@ -45,6 +48,9 @@ export function createApp(options: AppOptions = {}): Express {
   api.use(...rateLimits(options.rateLimit));
   api.use(authenticate);
   api.use(sessionRouter(options.sessionService));
+  // POST /tenants needs no tenant (the caller is creating one), so it also precedes idempotency,
+  // which is keyed by tenant.
+  api.use(tenantBootstrapRouter(options.tenantSetupService));
   api.use(tenantContext(options.loadSessionContext));
   api.use(idempotency(options.idempotencyStore));
   api.use(tenantRouter());
