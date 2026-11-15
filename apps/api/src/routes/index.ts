@@ -8,6 +8,9 @@ import { budgetLinesRouter } from './budget-lines.routes';
 import { donorsRouter } from './donors.routes';
 import { exchangeRatesRouter } from './exchange-rates.routes';
 import { grantsRouter } from './grants.routes';
+import { approvalRulesRouter } from './approval-rules.routes';
+import { rolesRouter } from './roles.routes';
+import { usersRouter } from './users.routes';
 
 export const API_VERSION = process.env.npm_package_version ?? '0.1.0';
 
@@ -23,6 +26,9 @@ export function tenantRouter(): Router {
   router.use(budgetLinesRouter());
   router.use(activitiesRouter());
   router.use(exchangeRatesRouter());
+  router.use(usersRouter());
+  router.use(rolesRouter());
+  router.use(approvalRulesRouter());
   return router;
 }
 

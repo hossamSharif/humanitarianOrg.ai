@@ -16,3 +16,6 @@ export * from './schemas/budget-line';
 export * from './schemas/activity';
 export * from './schemas/exchange-rate';
 export * from './schemas/budget-import';
+export * from './schemas/user';
+export * from './schemas/role';
+export * from './schemas/approval-rule';
