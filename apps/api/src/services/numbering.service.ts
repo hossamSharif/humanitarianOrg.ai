@@ -3,9 +3,11 @@
 // tenant's timezone, not the PR date.
 import {
   calendarDateInTimeZone,
+  formatDocumentNumber,
   type DocType,
   type NumberingConfigInput,
   type NumberingConfigResponse,
+  type NumberingPreviewParts,
 } from '@ngo/shared';
 import type { TxSql } from '../db/tx';
 import {
@@ -17,22 +19,8 @@ import {
 /** Shown in previews when the organization has no office yet. */
 export const PREVIEW_OFFICE_PLACEHOLDER = 'OFFICE';
 
-export function formatNumber(
-  config: NumberingConfigInput,
-  officeCode: string,
-  year: number,
-  seq: number
-): string {
-  if (!Number.isInteger(seq) || seq < 1) throw new RangeError(`Invalid sequence ${seq}`);
-  if (!Number.isInteger(config.padding) || config.padding < 1 || config.padding > 10) {
-    throw new RangeError(`Invalid padding ${config.padding}`);
-  }
-  const parts = [config.prefix];
-  if (config.includeOffice) parts.push(officeCode);
-  if (config.includeYear) parts.push(String(year));
-  parts.push(String(seq).padStart(config.padding, '0'));
-  return parts.join(config.separator);
-}
+/** The one formatter, shared with the web form's live preview. */
+export const formatNumber = formatDocumentNumber;
 
 export function submissionYear(submittedAt: string | Date, timeZone: string): number {
   return Number(calendarDateInTimeZone(submittedAt, timeZone).slice(0, 4));
@@ -48,7 +36,9 @@ export class NumberingService {
 
   /** Next number for the office, without consuming it. */
   async preview(docType: DocType, officeId?: string, now: Date = new Date()): Promise<string> {
-    return this.previewWith(await this.store.getConfig(docType), docType, officeId, now);
+    const config = await this.store.getConfig(docType);
+    const parts = await this.previewParts(docType, officeId, now);
+    return formatNumber(config, parts.officeCode, parts.year, parts.seq);
   }
 
   async get(
@@ -56,8 +46,7 @@ export class NumberingService {
     officeId?: string,
     now: Date = new Date()
   ): Promise<NumberingConfigResponse> {
-    const config = await this.store.getConfig(docType);
-    return { docType, ...config, preview: await this.previewWith(config, docType, officeId, now) };
+    return this.withPreview(docType, await this.store.getConfig(docType), officeId, now);
   }
 
   /** Changes apply to numbers assigned from now on; issued numbers never change (FR-005). */
@@ -67,8 +56,7 @@ export class NumberingService {
     officeId?: string,
     now: Date = new Date()
   ): Promise<NumberingConfigResponse> {
-    const config = await this.store.saveConfig(docType, input);
-    return { docType, ...config, preview: await this.previewWith(config, docType, officeId, now) };
+    return this.withPreview(docType, await this.store.saveConfig(docType, input), officeId, now);
   }
 
   async assignNumber(
@@ -85,19 +73,29 @@ export class NumberingService {
     return formatNumber(config, office.code, year, seq);
   }
 
-  private async previewWith(
+  private async withPreview(
+    docType: DocType,
     config: NumberingConfigInput,
+    officeId: string | undefined,
+    now: Date
+  ): Promise<NumberingConfigResponse> {
+    const parts = await this.previewParts(docType, officeId, now);
+    const preview = formatNumber(config, parts.officeCode, parts.year, parts.seq);
+    return { docType, ...config, preview, previewParts: parts };
+  }
+
+  private async previewParts(
     docType: DocType,
     officeId: string | undefined,
     now: Date
-  ): Promise<string> {
+  ): Promise<NumberingPreviewParts> {
     const [office, timeZone] = await Promise.all([
       officeId ? this.store.office(officeId) : this.store.firstActiveOffice(),
       this.store.timeZone(),
     ]);
     const year = submissionYear(now, timeZone);
     const last = office ? await this.store.lastValue(docType, office.id, year) : 0;
-    return formatNumber(config, office?.code ?? PREVIEW_OFFICE_PLACEHOLDER, year, last + 1);
+    return { officeCode: office?.code ?? PREVIEW_OFFICE_PLACEHOLDER, year, seq: last + 1 };
   }
 }
 

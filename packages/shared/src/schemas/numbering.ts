@@ -23,8 +23,34 @@ export type NumberingConfigInput = z.output<typeof numberingConfigBody>;
 
 export const numberingPreviewQuery = z.object({ officeId: z.string().uuid().optional() });
 
+export interface NumberingPreviewParts {
+  officeCode: string;
+  year: number;
+  seq: number;
+}
+
 export interface NumberingConfigResponse extends NumberingConfigInput {
   docType: DocType;
   /** next number for the office (first active office when none is given), e.g. PR-MAD-2026-0001 */
   preview: string;
+  /** what `preview` was built from, so a form can re-format it live while editing */
+  previewParts: NumberingPreviewParts;
+}
+
+/** `{prefix}{sep}{OFFICE}{sep}{YYYY}{sep}{seq padded}`; a longer sequence is never truncated. */
+export function formatDocumentNumber(
+  config: NumberingConfigInput,
+  officeCode: string,
+  year: number,
+  seq: number
+): string {
+  if (!Number.isInteger(seq) || seq < 1) throw new RangeError(`Invalid sequence ${seq}`);
+  if (!Number.isInteger(config.padding) || config.padding < 1 || config.padding > 10) {
+    throw new RangeError(`Invalid padding ${config.padding}`);
+  }
+  const parts = [config.prefix];
+  if (config.includeOffice) parts.push(officeCode);
+  if (config.includeYear) parts.push(String(year));
+  parts.push(String(seq).padStart(config.padding, '0'));
+  return parts.join(config.separator);
 }

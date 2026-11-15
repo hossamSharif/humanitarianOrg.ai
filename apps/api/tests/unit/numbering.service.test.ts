@@ -155,3 +155,16 @@ describe('NumberingService preview', () => {
     expect((await numbering.get('PR', undefined, now)).preview).toBe('PR-OFFICE-2026-0001');
   });
 });
+
+describe('NumberingService previewParts', () => {
+  it('returns what the preview was built from, so the web form can re-format it live', async () => {
+    const { store, numbering } = service();
+    const kst = store.addOffice('KST');
+    store.sequences.set(`${kst}:2026`, 4);
+    const config = await numbering.get('PR', kst, new Date('2026-11-10T10:00:00Z'));
+    expect(config.previewParts).toEqual({ officeCode: 'KST', year: 2026, seq: 5 });
+    expect(
+      formatNumber({ ...config, includeYear: false }, 'KST', 2026, config.previewParts.seq)
+    ).toBe('PR-KST-0005');
+  });
+});
