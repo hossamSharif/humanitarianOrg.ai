@@ -58,7 +58,10 @@ export type ApprovalRuleIssueReason =
   | 'band_overlap'
   | 'band_not_open_ended'
   | 'band_empty'
-  | 'role_not_found';
+  | 'role_not_found'
+  | 'office_not_found'
+  /** resolve: no active rule for the office and no active organization-wide rule */
+  | 'no_rule';
 
 export interface ApprovalRuleIssue {
   reason: ApprovalRuleIssueReason;
