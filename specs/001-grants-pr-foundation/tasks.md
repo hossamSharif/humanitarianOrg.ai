@@ -153,11 +153,11 @@ PR numbering (preview `PR-MAD-2026-0001`) are available when starting a PR.
 - [X] T057 [US1] Implement `apps/api/src/services/numbering.service.ts`: `formatNumber(config, officeCode, year, seq)`, `preview(docType, officeId?)`, `assignNumber(tx, docType, officeId, submittedAt, timeZone)` — year from the submission instant in the tenant timezone (used by US4 submit)
 - [X] T058 [P] [US1] Implement `apps/api/src/services/office.service.ts` and `apps/api/src/services/unit.service.ts` (CRUD, deactivate via `isActive=false`, never hard delete; map trigger error to `409 OFFICE_CODE_IN_USE`)
 - [X] T059 [US1] Implement routes `apps/api/src/routes/tenant.routes.ts` (`POST /tenants`, `GET/PATCH /tenant`, `POST /tenant/logo-upload-url`), `offices.routes.ts`, `units.routes.ts`, `numbering.routes.ts` (`GET/PUT /numbering/:docType` with `preview`) with permissions per contracts/rest-api.md; mount in `apps/api/src/routes/index.ts`
-- [ ] T060 [P] [US1] Build onboarding page `apps/web/src/app/[locale]/(app)/onboarding/page.tsx` (create organization when the user has no membership) and `apps/web/src/features/setup/organization-form.tsx` + page `apps/web/src/app/[locale]/(app)/setup/organization/page.tsx` (bilingual names, logo upload via signed URL, address, contact, base currency, DoA reference currency, fiscal year start month, timezone, maximum PR backdating days)
-- [ ] T061 [P] [US1] Build `apps/web/src/app/[locale]/(app)/setup/offices/page.tsx` with `apps/web/src/features/setup/offices-table.tsx` and `office-dialog.tsx` (code shown read-only with explanation when `OFFICE_CODE_IN_USE`)
-- [ ] T062 [P] [US1] Build `apps/web/src/app/[locale]/(app)/setup/units/page.tsx` with `apps/web/src/features/setup/units-table.tsx` (inline add/edit/deactivate)
-- [ ] T063 [P] [US1] Build `apps/web/src/app/[locale]/(app)/setup/numbering/page.tsx` with `apps/web/src/features/setup/numbering-form.tsx` (live preview from `GET /numbering/PR`, note that changes affect future numbers only)
-- [ ] T064 [US1] Add all US1 strings to `apps/web/src/messages/ar.json` and `en.json` (`setup.*` namespace)
+- [X] T060 [P] [US1] Build onboarding page `apps/web/src/app/[locale]/(app)/onboarding/page.tsx` (create organization when the user has no membership) and `apps/web/src/features/setup/organization-form.tsx` + page `apps/web/src/app/[locale]/(app)/setup/organization/page.tsx` (bilingual names, logo upload via signed URL, address, contact, base currency, DoA reference currency, fiscal year start month, timezone, maximum PR backdating days)
+- [X] T061 [P] [US1] Build `apps/web/src/app/[locale]/(app)/setup/offices/page.tsx` with `apps/web/src/features/setup/offices-table.tsx` and `office-dialog.tsx` (code shown read-only with explanation when `OFFICE_CODE_IN_USE`)
+- [X] T062 [P] [US1] Build `apps/web/src/app/[locale]/(app)/setup/units/page.tsx` with `apps/web/src/features/setup/units-table.tsx` (inline add/edit/deactivate)
+- [X] T063 [P] [US1] Build `apps/web/src/app/[locale]/(app)/setup/numbering/page.tsx` with `apps/web/src/features/setup/numbering-form.tsx` (live preview from `GET /numbering/PR`, note that changes affect future numbers only)
+- [X] T064 [US1] Add all US1 strings to `apps/web/src/messages/ar.json` and `en.json` (`setup.*` namespace)
 
 **Checkpoint**: US1 independently testable — new organization with offices, units, numbering preview.
 
