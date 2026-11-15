@@ -12,6 +12,8 @@ export const ERROR_CODES = {
   INVALID_STATE: 409,
   OFFICE_CODE_IN_USE: 409,
   EXCHANGE_RATE_IN_USE: 409,
+  // US3: deleting a role that is assigned or required by an approval step.
+  ROLE_IN_USE: 409,
   BUDGET_EXCEEDED: 422,
   BUDGET_BELOW_USAGE: 422,
   GRANT_NOT_ACTIVE: 422,
@@ -76,6 +78,8 @@ export interface ErrorDetailsMap {
     roleName: string;
     ruleId: string;
   };
+  APPROVAL_RULE_INVALID: { issues: { reason: string; stepOrder?: number }[] };
+  ROLE_IN_USE: { memberCount: number; ruleStepCount: number; prStepCount: number };
 }
 
 export type ErrorDetails<C extends ErrorCode> = C extends keyof ErrorDetailsMap
