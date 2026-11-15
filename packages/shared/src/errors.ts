@@ -27,6 +27,8 @@ export const ERROR_CODES = {
   // Raised by DB guard triggers (migrations 0004/0005); not in the original contract table.
   PR_LINE_GRANT_MISMATCH: 422,
   EXCHANGE_RATE_BASE_CURRENCY: 422,
+  // US2: changing the currency of a grant whose budget lines carry commitments.
+  GRANT_CURRENCY_LOCKED: 409,
   RATE_LIMITED: 429,
   INTERNAL_ERROR: 500,
 } as const;
