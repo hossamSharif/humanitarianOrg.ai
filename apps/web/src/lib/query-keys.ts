@@ -15,6 +15,16 @@ export const queryKeys = {
     all: ['grants'] as const,
     detail: (id: string) => ['grants', 'detail', id] as const,
     budgetLines: (id: string) => ['grants', id, 'budget-lines'] as const,
+    list: (filters: Record<string, unknown>) => ['grants', 'list', filters] as const,
+    activities: (id: string) => ['grants', id, 'activities'] as const,
+  },
+  donors: {
+    all: ['donors'] as const,
+    list: (filters: Record<string, unknown>) => ['donors', 'list', filters] as const,
+  },
+  rates: {
+    all: ['exchange-rates'] as const,
+    list: (filters: Record<string, unknown>) => ['exchange-rates', 'list', filters] as const,
   },
   setup: {
     tenant: ['setup', 'tenant'] as const,

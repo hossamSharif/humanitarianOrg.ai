@@ -3,6 +3,11 @@ import { numberingRouter } from './numbering.routes';
 import { officesRouter } from './offices.routes';
 import { tenantProfileRouter } from './tenant.routes';
 import { unitsRouter } from './units.routes';
+import { activitiesRouter } from './activities.routes';
+import { budgetLinesRouter } from './budget-lines.routes';
+import { donorsRouter } from './donors.routes';
+import { exchangeRatesRouter } from './exchange-rates.routes';
+import { grantsRouter } from './grants.routes';
 
 export const API_VERSION = process.env.npm_package_version ?? '0.1.0';
 
@@ -13,6 +18,11 @@ export function tenantRouter(): Router {
   router.use(officesRouter());
   router.use(unitsRouter());
   router.use(numberingRouter());
+  router.use(donorsRouter());
+  router.use(grantsRouter());
+  router.use(budgetLinesRouter());
+  router.use(activitiesRouter());
+  router.use(exchangeRatesRouter());
   return router;
 }
 
