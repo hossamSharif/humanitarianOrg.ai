@@ -79,3 +79,20 @@ export function formatDateTime(
   }
   return `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}`;
 }
+
+/** The calendar date of an instant in the organization's timezone, as ISO 'YYYY-MM-DD'. */
+export function calendarDateInTimeZone(instant: string | Date, timeZone: string): string {
+  const shown = formatDateTime(instant, timeZone);
+  return `${shown.slice(6, 10)}-${shown.slice(3, 5)}-${shown.slice(0, 2)}`;
+}
+
+/** true for IANA zone names the runtime knows, e.g. 'Africa/Khartoum'. */
+export function isValidTimeZone(timeZone: string): boolean {
+  if (!/^[A-Za-z_]+(\/[A-Za-z0-9_+-]+)*$/.test(timeZone)) return false;
+  try {
+    dateTimeFormatter(timeZone);
+    return true;
+  } catch {
+    return false;
+  }
+}

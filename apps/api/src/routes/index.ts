@@ -1,10 +1,18 @@
 import { Router } from 'express';
+import { numberingRouter } from './numbering.routes';
+import { officesRouter } from './offices.routes';
+import { tenantProfileRouter } from './tenant.routes';
+import { unitsRouter } from './units.routes';
 
 export const API_VERSION = process.env.npm_package_version ?? '0.1.0';
 
 /** `/api/v1` routes that need the tenant context. Feature routers are mounted here (US1–US8). */
 export function tenantRouter(): Router {
   const router = Router();
+  router.use(tenantProfileRouter());
+  router.use(officesRouter());
+  router.use(unitsRouter());
+  router.use(numberingRouter());
   return router;
 }
 

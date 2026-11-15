@@ -16,4 +16,10 @@ export const queryKeys = {
     detail: (id: string) => ['grants', 'detail', id] as const,
     budgetLines: (id: string) => ['grants', id, 'budget-lines'] as const,
   },
+  setup: {
+    tenant: ['setup', 'tenant'] as const,
+    offices: ['setup', 'offices'] as const,
+    units: ['setup', 'units'] as const,
+    numbering: (docType: string) => ['setup', 'numbering', docType] as const,
+  },
 };

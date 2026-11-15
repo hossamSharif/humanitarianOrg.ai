@@ -4,7 +4,7 @@ import { Button, Sheet, SheetContent, SheetTrigger } from '@ngo/ui';
 import { LogOut, Menu } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type ReactNode } from 'react';
-import { useRouter } from '@/i18n/routing';
+import { Link, usePathname, useRouter } from '@/i18n/routing';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useApiError } from '@/lib/use-api-error';
 import { useMe } from '@/lib/use-me';
@@ -14,6 +14,8 @@ import { OrgSwitcher } from './org-switcher';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const t = useTranslations('common');
+  const tSetup = useTranslations('setup.onboarding');
+  const pathname = usePathname();
   const router = useRouter();
   const apiError = useApiError();
   const { data: me, error, isPending, refetch } = useMe();
@@ -39,8 +41,18 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Button>
       </div>
     );
+  } else if (!me?.tenantId && pathname === '/onboarding') {
+    // creating a first organization needs no membership
+    body = children;
   } else if (!me?.tenantId) {
-    body = <p className="max-w-prose text-sm text-muted-foreground">{t('noOrganization')}</p>;
+    body = (
+      <div className="max-w-prose space-y-3">
+        <p className="text-sm text-muted-foreground">{t('noOrganization')}</p>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/onboarding">{tSetup('createLink')}</Link>
+        </Button>
+      </div>
+    );
   } else {
     body = children;
   }
