@@ -90,10 +90,12 @@ describe.runIf(integrationEnabled)('US3 users, roles and approval rules', () => 
       });
       invitedAuthIds.push(res.body.userId);
 
-      // the invitee sets a password (accept-invite page) and signs in
+      // the invitee follows the invite link (confirms the email), sets a password on the
+      // accept-invite page and signs in; hosted projects refuse unconfirmed password sign-ins
       const password = 'Invited-User-1!';
       await admin().auth.admin.updateUserById(res.body.userId, {
         password,
+        email_confirm: true,
         app_metadata: { tenant_id: tenant.id },
       });
       const { data } = await anonClient().auth.signInWithPassword({ email, password });

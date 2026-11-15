@@ -6,7 +6,7 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "eslint src e2e",
+    "lint": "eslint --no-error-on-unmatched-pattern src e2e",
     "type-check": "tsc --noEmit",
     "e2e": "playwright test",
     "e2e:ar": "playwright test --project=ar",

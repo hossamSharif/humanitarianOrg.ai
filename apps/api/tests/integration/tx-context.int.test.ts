@@ -84,7 +84,8 @@ describe.runIf(integrationEnabled)('withTenantTx context isolation', () => {
       expect(row.request_id).toBe(`req-${i}`);
       expect(row.role).toBe('authenticated');
     }
-  });
+    // ~280 round trips over two connections: allow for a hosted dev database's latency
+  }, 180_000);
 
   it('nothing leaks onto the pooled connection after commit or rollback', async () => {
     await withTenantTx(
