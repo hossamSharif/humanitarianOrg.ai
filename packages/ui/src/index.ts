@@ -20,3 +20,5 @@ export * from './components/textarea';
 export * from './components/toast';
 export * from './components/toaster';
 export { toast, useToast } from './components/use-toast';
+export * from './components/date-input';
+export * from './components/money-input';

@@ -50,16 +50,19 @@ async function main(): Promise<void> {
         name text
       )`;
 
-    const applied = new Set(
-      (
-        await sql<{ version: string }[]>`select version from supabase_migrations.schema_migrations`
-      ).map((r) => r.version)
-    );
+    // This script records version '0001'; Supabase MCP `apply_migration` records a timestamp
+    // version with name '0001_helpers_rls'. Either form marks the file as applied.
+    const history = await sql<
+      { version: string; name: string | null }[]
+    >`select version, name from supabase_migrations.schema_migrations`;
+    const applied = new Set(history.flatMap((r) => [r.version, r.name ?? '']));
+    const isApplied = (m: Migration) =>
+      applied.has(m.version) || applied.has(`${m.version}_${m.name}`);
     const migrations = await listMigrations();
-    const pending = migrations.filter((m) => !applied.has(m.version));
+    const pending = migrations.filter((m) => !isApplied(m));
 
     for (const m of migrations) {
-      console.log(`${applied.has(m.version) ? 'applied' : 'pending'}  ${m.file}`);
+      console.log(`${isApplied(m) ? 'applied' : 'pending'}  ${m.file}`);
     }
     if (statusOnly || pending.length === 0) {
       console.log(pending.length === 0 ? 'Schema is up to date.' : `${pending.length} pending.`);

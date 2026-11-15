@@ -21,8 +21,12 @@ export default defineWorkspace([
       include: ['tests/integration/**/*.test.ts'],
       environment: 'node',
       fileParallelism: false,
-      testTimeout: 30_000,
-      hookTimeout: 60_000,
+      // per-project fileParallelism is not applied in a workspace; one fork makes files sequential
+      pool: 'forks',
+      poolOptions: { forks: { singleFork: true } },
+      // generous: a remote dev database adds ~0.3 s per round trip
+      testTimeout: 60_000,
+      hookTimeout: 180_000,
     },
   },
 ]);

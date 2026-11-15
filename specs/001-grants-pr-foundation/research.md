@@ -69,6 +69,9 @@ with the changes listed in `docs/plan001.md`.
   `available >= 0` per touched budget line as a last line of defence.
   Simple CRUD and reads keep the GvsErp pattern: user-scoped supabase-js client.
   Connection: Supavisor transaction pooler (port 6543) with `prepare: false`.
+  **Update 2026-11-15**: use the session pooler (port 5432) instead. Integration tests hung
+  through 6543 when postgres.js pipelined queries onto busy connections, and passed repeatedly
+  through 5432; session mode is also Supabase's recommendation for long-running servers.
 - **Rationale**: Keeps business rules in TypeScript services (Principle IX) where they are
   unit-testable, while making the check-and-reserve atomic (FR-037, SC-003). Row locks on budget
   lines serialize only competing PRs on the same lines. The DB guard makes a negative Available

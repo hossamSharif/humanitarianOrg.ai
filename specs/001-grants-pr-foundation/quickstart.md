@@ -12,12 +12,12 @@ How to run the feature locally and prove it works end to end. Endpoint details l
 - **Before `/speckit-implement`**: confirm Supabase MCP (migrations, type generation) and Ref MCP
   are configured, and Chrome DevTools MCP connects (it timed out during planning). Until Supabase
   MCP is available, the Supabase CLI is the fallback for applying migrations (research R20).
-- **Tooling gate (T013, checked 2026-11-14 on the dev machine)**:
+- **Tooling gate (T013, re-checked 2026-11-15 — passed)**:
 
   | Need | Preferred | Fallback | Status |
   |---|---|---|---|
-  | Apply migrations, generate types | Supabase MCP | Supabase CLI + `pnpm --filter @ngo/database migrate` (applies `packages/database/migrations/*.sql` via the `postgres` driver and records them in `supabase_migrations.schema_migrations`) | **Blocked**: Supabase MCP exposes no tools in the session; Docker is not installed, so `npx supabase start` cannot run. Unblock with Docker Desktop (local stack) **or** a Supabase cloud dev project (`DATABASE_URL` + `supabase gen types --project-id`) |
-  | UI verification, screenshots | Chrome DevTools MCP | Playwright (`@playwright/test` screenshots) | Chrome DevTools MCP and Playwright MCP both timed out; Playwright test runner is the chosen path (see below) |
+  | Apply migrations, generate types | Supabase MCP | Supabase CLI + `pnpm --filter @ngo/database migrate` (applies `packages/database/migrations/*.sql` via the `postgres` driver and records them in `supabase_migrations.schema_migrations`) | **Supabase MCP (chosen)** against the cloud dev project `humanitairianOrg` (ref `wahbjvvdzqkncbdggpfb`, Postgres 17). Migrations 0001–0008 applied with `apply_migration` (recorded as timestamp versions named `0001_helpers_rls`…; `migrate.ts` treats either form as applied); types from `generate_typescript_types`. The project signs tokens with **ES256** (JWKS), so the API leaves `SUPABASE_JWT_SECRET` empty and verifies via `/auth/v1/.well-known/jwks.json` |
+  | UI verification, screenshots | Chrome DevTools MCP | Playwright (`@playwright/test` screenshots) | **Chrome DevTools MCP (chosen)**: connects; page snapshots and DOM checks work, screenshots are slow (some time out) — Playwright remains the fallback |
 
   Machine notes: Node 26 is installed (the plan targets Node 20; `.nvmrc` pins 20). pnpm is not
   installed globally and Node 26 ships without corepack; run `npx pnpm@8.15.9 <cmd>` or
@@ -29,7 +29,7 @@ How to run the feature locally and prove it works end to end. Endpoint details l
 |---|---|
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY` | api, web (`NEXT_PUBLIC_*` in web) |
 | `SUPABASE_SERVICE_ROLE_KEY` | api only (Auth admin calls) |
-| `DATABASE_URL` | api (`postgres` driver, transaction pooler, `prepare: false`) |
+| `DATABASE_URL` | api (`postgres` driver, `prepare: false`); cloud: **session pooler** `aws-1-eu-west-1.pooler.supabase.com:5432`, user `postgres.<ref>` — the transaction pooler (6543) hung on pipelined queries and the direct `db.<ref>` host is IPv6-only |
 | `SUPABASE_JWT_SECRET` | api (token verification) |
 | `API_BASE_URL` | web |
 

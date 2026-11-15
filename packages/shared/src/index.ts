@@ -1,3 +1,8 @@
 // @ngo/shared — Zod schemas, permission constants, error codes, money and date helpers shared by
-// apps/api and apps/web. Modules are re-exported here as they are added (Phase 2).
-export const SHARED_PACKAGE = '@ngo/shared';
+// apps/api and apps/web.
+export * from './permissions';
+export * from './errors';
+export * from './money';
+export * from './format/date';
+export * from './pr-state';
+export * from './schemas/common';

@@ -22,7 +22,7 @@
     "lint": "eslint src scripts tests",
     "type-check": "tsc --noEmit",
     "migrate": "tsx scripts/migrate.ts",
-    "gen:types": "npx -y supabase@2 gen types typescript --local --schema public > src/types.ts",
+    "gen:types": "tsx scripts/gen-types.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "test": "vitest run"
   },

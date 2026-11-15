@@ -1,0 +1,19 @@
+/* postcss-import resolves files, not package "exports" subpaths. */
+@import '@ngo/ui/src/styles/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html[lang='ar'] body {
+    font-family: var(--font-arabic), var(--font-latin), system-ui, sans-serif;
+  }
+  html[lang='en'] body {
+    font-family: var(--font-latin), var(--font-arabic), system-ui, sans-serif;
+  }
+  /* Amounts, codes and numbers line up in tables (Plex has tabular figures). */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}

@@ -1,0 +1,17 @@
+import { Router } from 'express';
+
+export const API_VERSION = process.env.npm_package_version ?? '0.1.0';
+
+/** `/api/v1` routes that need the tenant context. Feature routers are mounted here (US1–US8). */
+export function tenantRouter(): Router {
+  const router = Router();
+  return router;
+}
+
+export function healthRouter(): Router {
+  const router = Router();
+  router.get('/health', (_req, res) => {
+    res.json({ status: 'ok', version: API_VERSION });
+  });
+  return router;
+}

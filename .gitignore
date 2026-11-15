@@ -38,3 +38,6 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+
+# Local secrets (never commit)
+docs/suupaKeys.md
