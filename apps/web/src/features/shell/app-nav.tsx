@@ -9,6 +9,7 @@ import {
   FileText,
   HandCoins,
   Home,
+  Landmark,
   type LucideIcon,
   Settings,
   ShieldCheck,
@@ -39,6 +40,7 @@ const ITEMS: NavItem[] = [
     anyOf: [P.PR_FINANCE_CHECK, P.PR_APPROVE],
   },
   { href: '/grants', label: 'grants', icon: HandCoins, anyOf: [P.GRANTS_MANAGE, P.BUDGET_READ] },
+  { href: '/donors', label: 'donors', icon: Landmark, anyOf: [P.GRANTS_MANAGE, P.BUDGET_READ] },
   {
     href: '/reports/budget-status',
     label: 'budgetReport',
