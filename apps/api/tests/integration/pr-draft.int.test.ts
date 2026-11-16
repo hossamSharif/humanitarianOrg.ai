@@ -17,7 +17,8 @@ import {
 import { as } from './helpers/http';
 import { closeOwnerDb, ensureMigrated, integrationEnabled, ownerDb, truncateTenantTables } from './helpers/setup';
 
-describe.runIf(integrationEnabled)('PR drafts and submit (US4)', () => {
+// long HTTP flows and Storage round trips: ~0.3 s per round trip to a remote dev database
+describe.runIf(integrationEnabled)('PR drafts and submit (US4)', { timeout: 180_000 }, () => {
   let tenant: TestTenant;
   let requesterToken: string;
   let colleagueToken: string;
@@ -152,7 +153,7 @@ describe.runIf(integrationEnabled)('PR drafts and submit (US4)', () => {
       mimeType: 'text/plain',
       sizeBytes: content.length,
     });
-    expect(target.status).toBe(201);
+    expect(target.status, JSON.stringify(target.body)).toBe(201);
     expect(target.body.path).toBe(`${tenant.id}/${prId}/${target.body.attachmentId}`);
 
     const put = await fetch(target.body.signedUrl, {
