@@ -96,3 +96,11 @@ export function isValidTimeZone(timeZone: string): boolean {
     return false;
   }
 }
+
+/** ISO date `days` calendar days after (or, negative, before) `isoDate`: '2026-11-10', -30 → '2026-10-11'. */
+export function addDays(isoDate: string, days: number): string {
+  const [y, m, d] = isoDate.split('-').map(Number) as [number, number, number];
+  const shifted = new Date(Date.UTC(y, m - 1, d + days));
+  const pad = (n: number, width = 2) => String(n).padStart(width, '0');
+  return `${pad(shifted.getUTCFullYear(), 4)}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`;
+}

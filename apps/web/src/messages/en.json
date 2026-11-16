@@ -545,5 +545,131 @@
     "RATE_LIMITED": "Too many requests in a short time. Wait a moment and try again.",
     "INTERNAL_ERROR": "Something went wrong. Please try again.",
     "NETWORK_ERROR": "Could not reach the server. Check your internet connection."
+  },
+  "pr": {
+    "list": {
+      "title": "Purchase requisitions",
+      "new": "New purchase requisition",
+      "intro": "Create a purchase requisition, or open one from your notifications. The full list with search arrives with the next release."
+    },
+    "form": {
+      "headerTitle": "Requisition details",
+      "newTitle": "New purchase requisition",
+      "creating": "Creating the draft…",
+      "prDate": "PR date",
+      "requestingOffice": "Requesting office",
+      "grant": "Grant",
+      "grantNotSelectable": "Selected grant (not available for this date or office)",
+      "grantNeedsDateOffice": "Enter the PR date and office first",
+      "noGrants": "No active grant covers this date and office.",
+      "deliverTo": "Deliver to",
+      "deliveryAddress": "Delivery address",
+      "contactName": "Contact name",
+      "contactPhone": "Contact phone",
+      "requiredBy": "Required by",
+      "prType": "Type",
+      "types": {
+        "goods": "Goods",
+        "services": "Services",
+        "mixed": "Goods and services"
+      },
+      "activity": "Activity",
+      "none": "None",
+      "purpose": "Purpose / comments",
+      "select": "Select…",
+      "delete": "Delete draft",
+      "deleteTitle": "Delete this draft?",
+      "deleteBody": "The draft and its lines are removed permanently. This cannot be undone.",
+      "conflict": "This draft was changed in another window or session. Reload to continue from the latest version.",
+      "reload": "Reload",
+      "restored": "Unsaved changes from your last visit were restored and are being saved.",
+      "autosave": {
+        "pending": "Unsaved changes",
+        "saving": "Saving…",
+        "saved": "All changes saved",
+        "error": "Could not save — will retry on the next change",
+        "conflict": "Not saved: changed elsewhere"
+      },
+      "errors": {
+        "required": "Required",
+        "invalid": "Invalid value",
+        "required_by_before_pr_date": "Must be on or after the PR date",
+        "no_lines": "Add at least one line"
+      }
+    },
+    "lines": {
+      "title": "Items",
+      "add": "Add line",
+      "empty": "No lines yet.",
+      "lineNo": "Line {n}",
+      "remove": "Remove line {n}",
+      "description": "Description",
+      "specifications": "Specifications",
+      "quantity": "Quantity",
+      "unit": "Unit",
+      "unitCost": "Unit cost",
+      "currency": "Currency",
+      "lineTotal": "Line total",
+      "budgetLine": "Budget line",
+      "select": "Select…",
+      "selectGrantFirst": "Choose a grant first",
+      "available": "Available: {amount}",
+      "location": "Location",
+      "activity": "Activity",
+      "none": "None",
+      "totalIn": "Total {currency}",
+      "amountGrant": "Grant currency",
+      "baseCurrency": "Base currency",
+      "lockedRate": "Rate {rate} of {date} ({source})",
+      "errors": {
+        "noLines": "Add at least one line"
+      }
+    },
+    "attachments": {
+      "title": "Attachments",
+      "add": "Add files",
+      "uploading": "Uploading…",
+      "limits": "Up to {max} files, {size} each: PDF, images, Word, Excel, CSV or text.",
+      "empty": "No attachments.",
+      "wrongType": "{name}: this file type is not allowed.",
+      "tooLarge": "{name} is larger than 10 MB.",
+      "tooMany": "A requisition can have at most {max} attachments.",
+      "download": "Download {name}",
+      "remove": "Remove {name}"
+    },
+    "submit": {
+      "submit": "Submit",
+      "submitting": "Submitting…",
+      "incomplete": "Complete the highlighted fields before submitting.",
+      "budgetExceeded": "Some lines exceed the available budget. Reduce them or choose another budget line.",
+      "shortfall": "Budget line {code}: short by {shortfall} (available {available}).",
+      "rateMissing": "No exchange rate for {currencies} on or before {date}. Contact Finance to record it.",
+      "dateOutOfRange": "The PR date must be between {earliest} and {latest}.",
+      "noApprover": "Nobody can sign step {step} ({role}). Ask your administrator to assign the role."
+    },
+    "view": {
+      "requester": "Requested by",
+      "totalGrantCurrency": "Total in grant currency",
+      "doaAmount": "Amount for approval limits",
+      "rateUsed": "Rate {rate} of {date} ({source})",
+      "edit": "Edit"
+    },
+    "steps": {
+      "title": "Approvals",
+      "requestedBy": "Requested by",
+      "kind": {
+        "finance_check": "Finance check",
+        "approval": "Approval",
+        "final_approval": "Final approval"
+      },
+      "status": {
+        "waiting": "Waiting",
+        "pending": "Awaiting signature",
+        "approved": "Signed",
+        "rejected": "Rejected",
+        "returned": "Returned",
+        "cancelled": "Cancelled"
+      }
+    }
   }
 }

@@ -2,7 +2,7 @@
 // memberships, grants, budget lines, rates and draft PRs. Rows are written with the table-owner
 // connection; tests then act through the API or supabase-js as the created users.
 import { randomUUID } from 'node:crypto';
-import { SEEDED_ROLES, type SeededRoleKey } from '@ngo/shared';
+import { SEEDED_ROLES, calendarDateInTimeZone, type SeededRoleKey } from '@ngo/shared';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { ownerDb, truncateTenantTables } from './setup';
 
@@ -270,4 +270,45 @@ export async function createDraftPr(
               ${options.budgetLineId}, ${officeId})`;
   }
   return { id: pr!.id };
+}
+
+/**
+ * What submitting a PR needs besides funding: the PR numbering config (defaults
+ * PR-{office}-{year}-{0000}) and the default rule — finance check by Finance Checker, then one
+ * open final-approval band for Approver (data-model §8).
+ */
+export async function createPrRouting(tenant: TestTenant): Promise<{ ruleId: string }> {
+  await ownerDb()`
+    insert into public.numbering_config (tenant_id, doc_type) values (${tenant.id}, 'PR')
+    on conflict (tenant_id, doc_type) do nothing`;
+  // migration 0011 checks a rule and its steps together at commit
+  const ruleId = await ownerDb().begin(async (sql) => {
+    const [rule] = await sql<{ id: string }[]>`
+      insert into public.approval_rule (tenant_id, doc_type, office_id, name)
+      values (${tenant.id}, 'PR', null, 'Default') returning id`;
+    await sql`
+      insert into public.approval_rule_step ${sql([
+        {
+          tenant_id: tenant.id,
+          rule_id: rule!.id,
+          step_order: 1,
+          kind: 'finance_check',
+          role_id: tenant.roles.finance_checker,
+        },
+        {
+          tenant_id: tenant.id,
+          rule_id: rule!.id,
+          step_order: 2,
+          kind: 'final_approval',
+          role_id: tenant.roles.approver,
+        },
+      ])}`;
+    return rule!.id;
+  });
+  return { ruleId };
+}
+
+/** Today in the tenant timezone (Africa/Khartoum), so PR dates fall inside the backdating window. */
+export function todayInKhartoum(): string {
+  return calendarDateInTimeZone(new Date(), 'Africa/Khartoum');
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatDateTime, parseDisplayDate } from '../src/format/date';
+import { addDays, formatDate, formatDateTime, parseDisplayDate } from '../src/format/date';
 
 describe('formatDate', () => {
   it('formats ISO dates as DD/MM/YYYY by slicing (no timezone shift)', () => {
@@ -73,5 +73,14 @@ describe('formatDateTime', () => {
   it('accepts Date objects and returns empty for null', () => {
     expect(formatDateTime(new Date('2026-11-10T08:05:00Z'), 'UTC')).toBe('10/11/2026 08:05');
     expect(formatDateTime(null, 'UTC')).toBe('');
+  });
+});
+
+describe('addDays', () => {
+  it('moves across month and year boundaries', () => {
+    expect(addDays('2026-11-10', -30)).toBe('2026-10-11');
+    expect(addDays('2026-01-02', -5)).toBe('2025-12-28');
+    expect(addDays('2024-02-28', 1)).toBe('2024-02-29');
+    expect(addDays('2026-11-10', 0)).toBe('2026-11-10');
   });
 });

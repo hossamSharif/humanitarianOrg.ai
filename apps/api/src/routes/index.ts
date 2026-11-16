@@ -11,6 +11,7 @@ import { grantsRouter } from './grants.routes';
 import { approvalRulesRouter } from './approval-rules.routes';
 import { rolesRouter } from './roles.routes';
 import { usersRouter } from './users.routes';
+import { prsRouter } from './prs.routes';
 
 export const API_VERSION = process.env.npm_package_version ?? '0.1.0';
 
@@ -29,6 +30,7 @@ export function tenantRouter(): Router {
   router.use(usersRouter());
   router.use(rolesRouter());
   router.use(approvalRulesRouter());
+  router.use(prsRouter());
   return router;
 }
 

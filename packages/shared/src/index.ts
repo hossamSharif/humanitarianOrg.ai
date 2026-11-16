@@ -19,3 +19,4 @@ export * from './schemas/budget-import';
 export * from './schemas/user';
 export * from './schemas/role';
 export * from './schemas/approval-rule';
+export * from './schemas/pr';

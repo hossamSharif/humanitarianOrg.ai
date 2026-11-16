@@ -545,5 +545,131 @@
     "RATE_LIMITED": "طلبات كثيرة في وقت قصير. انتظر قليلًا ثم حاول مجددًا.",
     "INTERNAL_ERROR": "حدث خطأ غير متوقع. حاول مرة أخرى.",
     "NETWORK_ERROR": "تعذّر الاتصال بالخادم. تحقق من اتصالك بالإنترنت."
+  },
+  "pr": {
+    "list": {
+      "title": "طلبات الشراء",
+      "new": "طلب شراء جديد",
+      "intro": "أنشئ طلب شراء جديدًا أو افتح طلبًا من إشعاراتك. ستتوفر القائمة الكاملة مع البحث في الإصدار القادم."
+    },
+    "form": {
+      "headerTitle": "بيانات الطلب",
+      "newTitle": "طلب شراء جديد",
+      "creating": "جارٍ إنشاء المسودة…",
+      "prDate": "تاريخ الطلب",
+      "requestingOffice": "المكتب الطالب",
+      "grant": "المنحة",
+      "grantNotSelectable": "المنحة المختارة (غير متاحة لهذا التاريخ أو المكتب)",
+      "grantNeedsDateOffice": "أدخل تاريخ الطلب والمكتب أولًا",
+      "noGrants": "لا توجد منحة نشطة تغطي هذا التاريخ والمكتب.",
+      "deliverTo": "التسليم إلى",
+      "deliveryAddress": "عنوان التسليم",
+      "contactName": "اسم جهة الاتصال",
+      "contactPhone": "هاتف جهة الاتصال",
+      "requiredBy": "مطلوب بتاريخ",
+      "prType": "النوع",
+      "types": {
+        "goods": "سلع",
+        "services": "خدمات",
+        "mixed": "سلع وخدمات"
+      },
+      "activity": "النشاط",
+      "none": "بدون",
+      "purpose": "الغرض / ملاحظات",
+      "select": "اختر…",
+      "delete": "حذف المسودة",
+      "deleteTitle": "حذف هذه المسودة؟",
+      "deleteBody": "ستُحذف المسودة وبنودها نهائيًا، ولا يمكن التراجع عن ذلك.",
+      "conflict": "تم تعديل هذه المسودة في نافذة أو جلسة أخرى. أعد التحميل للمتابعة من أحدث نسخة.",
+      "reload": "إعادة التحميل",
+      "restored": "تمت استعادة تعديلات غير محفوظة من زيارتك السابقة وجارٍ حفظها.",
+      "autosave": {
+        "pending": "تعديلات غير محفوظة",
+        "saving": "جارٍ الحفظ…",
+        "saved": "تم حفظ كل التعديلات",
+        "error": "تعذّر الحفظ — ستُعاد المحاولة عند التعديل التالي",
+        "conflict": "لم يُحفظ: عُدّل في مكان آخر"
+      },
+      "errors": {
+        "required": "مطلوب",
+        "invalid": "قيمة غير صالحة",
+        "required_by_before_pr_date": "يجب أن يكون في تاريخ الطلب أو بعده",
+        "no_lines": "أضف بندًا واحدًا على الأقل"
+      }
+    },
+    "lines": {
+      "title": "البنود",
+      "add": "إضافة بند",
+      "empty": "لا توجد بنود بعد.",
+      "lineNo": "البند {n}",
+      "remove": "حذف البند {n}",
+      "description": "الوصف",
+      "specifications": "المواصفات",
+      "quantity": "الكمية",
+      "unit": "الوحدة",
+      "unitCost": "سعر الوحدة",
+      "currency": "العملة",
+      "lineTotal": "إجمالي البند",
+      "budgetLine": "بند الميزانية",
+      "select": "اختر…",
+      "selectGrantFirst": "اختر المنحة أولًا",
+      "available": "المتاح: {amount}",
+      "location": "الموقع",
+      "activity": "النشاط",
+      "none": "بدون",
+      "totalIn": "الإجمالي {currency}",
+      "amountGrant": "بعملة المنحة",
+      "baseCurrency": "العملة الأساسية",
+      "lockedRate": "سعر {rate} بتاريخ {date} ({source})",
+      "errors": {
+        "noLines": "أضف بندًا واحدًا على الأقل"
+      }
+    },
+    "attachments": {
+      "title": "المرفقات",
+      "add": "إضافة ملفات",
+      "uploading": "جارٍ الرفع…",
+      "limits": "حتى {max} ملفًا، {size} لكل ملف: PDF أو صور أو Word أو Excel أو CSV أو نص.",
+      "empty": "لا توجد مرفقات.",
+      "wrongType": "{name}: نوع الملف غير مسموح.",
+      "tooLarge": "{name} أكبر من 10 ميغابايت.",
+      "tooMany": "يمكن أن يحتوي الطلب على {max} مرفقًا كحد أقصى.",
+      "download": "تنزيل {name}",
+      "remove": "حذف {name}"
+    },
+    "submit": {
+      "submit": "إرسال",
+      "submitting": "جارٍ الإرسال…",
+      "incomplete": "أكمل الحقول المحددة قبل الإرسال.",
+      "budgetExceeded": "بعض البنود تتجاوز الميزانية المتاحة. خفّضها أو اختر بند ميزانية آخر.",
+      "shortfall": "بند الميزانية {code}: عجز بمقدار {shortfall} (المتاح {available}).",
+      "rateMissing": "لا يوجد سعر صرف لـ {currencies} في {date} أو قبله. تواصل مع المالية لتسجيله.",
+      "dateOutOfRange": "يجب أن يكون تاريخ الطلب بين {earliest} و{latest}.",
+      "noApprover": "لا يوجد من يمكنه توقيع الخطوة {step} ({role}). اطلب من المسؤول إسناد الدور."
+    },
+    "view": {
+      "requester": "مقدم الطلب",
+      "totalGrantCurrency": "الإجمالي بعملة المنحة",
+      "doaAmount": "المبلغ لحدود الاعتماد",
+      "rateUsed": "سعر {rate} بتاريخ {date} ({source})",
+      "edit": "تعديل"
+    },
+    "steps": {
+      "title": "الاعتمادات",
+      "requestedBy": "مقدم الطلب",
+      "kind": {
+        "finance_check": "التدقيق المالي",
+        "approval": "اعتماد",
+        "final_approval": "الاعتماد النهائي"
+      },
+      "status": {
+        "waiting": "في الانتظار",
+        "pending": "بانتظار التوقيع",
+        "approved": "موقّع",
+        "rejected": "مرفوض",
+        "returned": "مُعاد",
+        "cancelled": "ملغى"
+      }
+    }
   }
 }
