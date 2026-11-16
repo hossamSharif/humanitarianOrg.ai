@@ -1,3 +1,20 @@
+<!--
+Sync Impact Report
+- Version change: 1.1.0 → 1.2.0 (MINOR: new principle XI; expanded guidance in II, III, VII and
+  Development Workflow)
+- Modified principles:
+  - II. Segregation of Duties and Approval Integrity (adds per-document-type segregation rules)
+  - III. Fund Integrity (Available ≥ 0 covers every budget-holding document under concurrency)
+  - VII. Document Linkage and Traceability (inherited fields immutable downstream; sealed prices)
+- Added sections: Principle XI. Accounting Integrity; Development Workflow bullet "Regression gate"
+- Removed sections: none
+- Templates: plan/spec/tasks templates read the constitution at runtime; no template edits needed.
+  specs/002-procurement-to-payment/plan.md already checks XI (marked "proposed"; now ratified).
+- Follow-up TODOs:
+  - Governance names I–V as strict and VI–X as deviable; XI is in neither list. The amendment
+    input did not classify it — decide in a PATCH amendment (recommended: strict).
+-->
+
 # NGO Procurement & Grants Platform Constitution
 
 ## Purpose
@@ -30,6 +47,13 @@ compliant.
   and optional comment, stored immutably.
 - Approved documents MUST be locked. Changing them requires a formal amendment or cancellation
   flow, never a silent edit.
+- Segregation rules MUST be defined per document type in one place, and include at least:
+  - the creator of a PR MUST NOT approve the award;
+  - the creator of any document MUST NOT approve it;
+  - the receiver and the inspector of goods MUST be different people;
+  - whoever received, inspected, or prepared a payment MUST NOT approve it;
+  - a voucher MUST be entered, checked, and approved by three different people;
+  - committee members MUST sign a conflict-of-interest declaration before scoring.
 
 **Rationale**: Separation of duties is the first control auditors test.
 
@@ -43,6 +67,9 @@ compliant.
   derived, never typed.
 - The system MUST block any action that would make Available negative on a line, unless an
   explicit, permissioned, logged override exists for that action.
+- The Available ≥ 0 guarantee MUST cover every document that holds or consumes budget (PRs, POs,
+  contracts, amendments, direct payments, advances, journals) and MUST hold under concurrent
+  actions.
 - Funds are restricted: a line of one grant MUST NOT be charged for another grant.
 - Donor budget line codes MUST be stored as the donor's own text code (e.g. `10202`, `2.2.31`);
   the system MUST NOT force a single numeric format.
@@ -98,6 +125,9 @@ and wrong amounts in words.
   (items, grant, budget line, location). Users never retype it.
 - Every document MUST store a reference to its source (PR → RFQ → PO → GRN → Payment) and be
   navigable in both directions.
+- Downstream documents MUST inherit supplier, grant, budget line, donor, and location from their
+  source; these fields MUST NOT be changeable downstream.
+- Quotation and bid prices MUST NOT be readable by anyone before the opening is recorded.
 - Document numbers MUST be unique per tenant, generated server-side by sequence, per document
   type, office, and year (format configurable).
 
@@ -137,6 +167,23 @@ lets web and API share one source of truth for validation.
 **Rationale**: The controls in Principles I–III are only credible to an auditor if they are
 proven to hold on every change.
 
+### XI. Accounting Integrity
+
+- Every voucher MUST balance in the base currency before it can be checked, and this MUST be
+  enforced by a database constraint, not only by the UI or API.
+- Posted vouchers and their lines MUST be immutable. Corrections MUST be made only by a linked
+  reversal voucher followed by a new voucher.
+- Posting into a closed accounting period MUST be blocked. Reopening a period MUST require a
+  dedicated permission and a reason, and MUST be audited.
+- Every voucher line in a currency other than the base currency MUST store its own exchange rate,
+  rate date, and source. A currency label that contradicts its rate is invalid.
+- Budget-line Actual MUST be derived only from posted voucher lines. It is never typed or edited.
+- Expense recognition MUST follow the organization's configured basis (cash basis by default).
+
+**Rationale**: Donor audits rely on a ledger that cannot be silently changed. The real vouchers
+analyzed contained a USD label with a 1.0000 rate on an SDG amount and an amount in words that
+did not match the figure.
+
 ## Development Workflow
 
 - **Database**: all schema changes, migrations, and type generation go through Supabase MCP
@@ -149,6 +196,8 @@ proven to hold on every change.
 - **Commits**: commit all changes to the active feature branch after each completed
   `/speckit.implement` run, with a descriptive message. If a commit fails, halt and ask for
   human attention.
+- **Regression gate**: refactors of existing tables MUST keep all earlier features' tests green;
+  a feature's first implementation phase MUST end with a regression gate.
 - **Scope**: implement only what the current spec defines. Out-of-scope ideas go into a backlog
   note, not into code.
 
@@ -164,4 +213,4 @@ proven to hold on every change.
   Complexity Tracking section.
 - Every plan MUST include a Constitution Check against all principles.
 
-**Version**: 1.1.0 | **Ratified**: 2026-11-14 | **Last Amended**: 2026-11-14
+**Version**: 1.2.0 | **Ratified**: 2026-11-14 | **Last Amended**: 2026-11-16
