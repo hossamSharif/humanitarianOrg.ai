@@ -2,13 +2,23 @@ import {
   PERMISSIONS,
   attachmentUpload,
   idParam,
+  prApprove,
   prAttachmentParams,
+  prChangeBudgetLine,
   prCreate,
   prDraftUpdate,
+  prLineParams,
+  prReasonAction,
+  prReassign,
+  prStepParams,
   prSubmit,
   type AttachmentUpload,
+  type PrApprove,
+  type PrChangeBudgetLine,
   type PrCreate,
   type PrDraftUpdate,
+  type PrReasonAction,
+  type PrReassign,
   type PrSubmit,
 } from '@ngo/shared';
 import { Router } from 'express';
@@ -21,7 +31,9 @@ import { handle, type ServiceFactory } from './route-helpers';
 /**
  * Purchase requisitions. Reads need pr:read and are office-scoped by RLS; creating and
  * submitting need pr:create; draft edits, deletes and attachments are the requester's own
- * (checked by the service).
+ * (checked by the service). Step actions (approve, reject, return, change budget line) need
+ * eligibility for the current step, which the workflow service decides; reassigning needs
+ * pr:reassign.
  */
 export function prsRouter(
   service: ServiceFactory<PrService> = PrService.forContext,
@@ -30,6 +42,7 @@ export function prsRouter(
   const router = Router();
   const read = requirePermission(PERMISSIONS.PR_READ);
   const create = requirePermission(PERMISSIONS.PR_CREATE);
+  const reassign = requirePermission(PERMISSIONS.PR_REASSIGN);
 
   router.post(
     '/prs',
@@ -72,6 +85,66 @@ export function prsRouter(
     validate({ params: idParam, body: prSubmit }),
     handle(async (req, res, ctx) => {
       res.json(await workflow(ctx).submit(req.params.id!, req.body as PrSubmit));
+    })
+  );
+
+  // --- steps (US5) ----------------------------------------------------------------------------
+
+  router.post(
+    '/prs/:id/approve',
+    validate({ params: idParam, body: prApprove }),
+    handle(async (req, res, ctx) => {
+      res.json(await workflow(ctx).approve(req.params.id!, req.body as PrApprove));
+    })
+  );
+
+  router.post(
+    '/prs/:id/reject',
+    validate({ params: idParam, body: prReasonAction }),
+    handle(async (req, res, ctx) => {
+      res.json(await workflow(ctx).reject(req.params.id!, req.body as PrReasonAction));
+    })
+  );
+
+  router.post(
+    '/prs/:id/return',
+    validate({ params: idParam, body: prReasonAction }),
+    handle(async (req, res, ctx) => {
+      res.json(await workflow(ctx).return(req.params.id!, req.body as PrReasonAction));
+    })
+  );
+
+  router.post(
+    '/prs/:id/lines/:lineId/budget-line',
+    validate({ params: prLineParams, body: prChangeBudgetLine }),
+    handle(async (req, res, ctx) => {
+      res.json(
+        await workflow(ctx).changeBudgetLine(
+          req.params.id!,
+          req.params.lineId!,
+          req.body as PrChangeBudgetLine
+        )
+      );
+    })
+  );
+
+  router.get(
+    '/prs/:id/steps/:stepId/eligible-users',
+    reassign,
+    validate({ params: prStepParams }),
+    handle(async (req, res, ctx) => {
+      res.json({ data: await service(ctx).eligibleUsers(req.params.id!, req.params.stepId!) });
+    })
+  );
+
+  router.post(
+    '/prs/:id/steps/:stepId/reassign',
+    reassign,
+    validate({ params: prStepParams, body: prReassign }),
+    handle(async (req, res, ctx) => {
+      res.json(
+        await workflow(ctx).reassign(req.params.id!, req.params.stepId!, req.body as PrReassign)
+      );
     })
   );
 

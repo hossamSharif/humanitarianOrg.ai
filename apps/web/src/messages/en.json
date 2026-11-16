@@ -670,6 +670,53 @@
         "returned": "Returned",
         "cancelled": "Cancelled"
       }
+    },
+    "actions": {
+      "title": "Actions",
+      "titleStep": "Your action: {step}",
+      "approve": "Approve and sign",
+      "approveTitle": "Sign this step",
+      "approveIntro": "Your name and position are stored with the signature and printed on the PR.",
+      "signingAs": "Signing as",
+      "sign": "Sign",
+      "comment": "Comment (optional)",
+      "reason": "Reason (required)",
+      "reject": "Reject",
+      "rejectTitle": "Reject the purchase requisition",
+      "rejectIntro": "Rejection is final. The budget held by this PR is released and the requester is notified.",
+      "return": "Return for changes",
+      "returnTitle": "Return to the requester",
+      "returnIntro": "The requester can correct and resubmit the PR with the same number. The budget held is released until then.",
+      "returnedTitle": "Returned for changes",
+      "resubmitHint": "Resubmitting keeps the PR number and restarts the approvals from the finance check with current exchange rates.",
+      "changeBudgetLine": {
+        "open": "Change budget line",
+        "title": "Change a line's budget line",
+        "intro": "Move a PR line to another budget line of the same grant. Its reserved amount moves with it.",
+        "line": "PR line",
+        "lineAmount": "Amount in grant currency: {amount}",
+        "target": "New budget line",
+        "targetPlaceholder": "Choose a budget line",
+        "available": "Available {amount}",
+        "comment": "Comment (optional)",
+        "confirm": "Move",
+        "shortfall": "Budget line {code} is short by {shortfall} (available {available})."
+      },
+      "reassign": {
+        "open": "Reassign step",
+        "title": "Reassign a step",
+        "intro": "Only the chosen user will be able to sign this step. They are notified.",
+        "step": "Step",
+        "user": "Assign to",
+        "userPlaceholder": "Choose an eligible user",
+        "loadingUsers": "Loading…",
+        "noUsers": "No other user is eligible for this step.",
+        "confirm": "Reassign"
+      }
+    },
+    "frozen": {
+      "title": "Grant suspended or closed",
+      "body": "This PR cannot be approved while its grant is not active. It can still be returned, rejected or cancelled."
     }
   }
 }

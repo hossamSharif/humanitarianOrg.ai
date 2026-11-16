@@ -27,6 +27,7 @@ import type {
 import type {
   PrApprovalStepStore,
   PrStepRecord,
+  StepChanges,
 } from '../../../src/repositories/pr-approval-step.repository';
 import type {
   AttachmentRecord,
@@ -44,6 +45,7 @@ import type {
   PrRecord,
   PrStore,
   PrintSnapshot,
+  StatusValues,
   SubmissionValues,
   TenantSettings,
 } from '../../../src/repositories/pr.repository';
@@ -103,6 +105,11 @@ export class FakePrStore implements PrStore {
   writes = 0;
   /** last values passed to markSubmitted */
   submitted: SubmissionValues | null = null;
+  /** columns PrRecord does not read back: closed_at, rejected_by, cancelled_by */
+  readonly closing = new Map<
+    string,
+    Pick<StatusValues, 'closedAt' | 'rejectedBy' | 'cancelledBy'>
+  >();
 
   seed(pr: PrRecord, lines: PrLineRecord[] = []): this {
     this.prs.set(pr.id, clone(pr));
@@ -279,6 +286,20 @@ export class FakePrStore implements PrStore {
     } = values;
     return this.bump(id, { ...rest, status: 'pending_finance_check' });
   }
+
+  async updateStatus(id: string, values: StatusValues) {
+    const { closedAt, rejectedBy, cancelledBy, ...rest } = values;
+    if (closedAt || rejectedBy || cancelledBy) {
+      this.closing.set(id, { ...this.closing.get(id), closedAt, rejectedBy, cancelledBy });
+    }
+    return this.bump(id, rest);
+  }
+
+  async setLineBudgetLine(prId: string, lineId: string, budgetLineId: string) {
+    const line = (this.lineRows.get(prId) ?? []).find((l) => l.id === lineId);
+    if (line) line.budgetLineId = budgetLineId;
+    return this.bump(prId);
+  }
 }
 
 export class FakeAttachmentStore implements PrAttachmentStore {
@@ -360,6 +381,18 @@ export class FakeStepStore implements PrApprovalStepStore {
         .filter((s) => s.prId === prId && s.cycle === cycle)
         .sort((a, b) => a.stepOrder - b.stepOrder)
     );
+  }
+
+  async update(id: string, changes: StepChanges) {
+    const step = this.rows.find((s) => s.id === id);
+    if (!step) throw new AppError('NOT_FOUND', 'pr_approval_step not found');
+    Object.assign(step, changes);
+  }
+
+  async cancelWaiting(prId: string, cycle: number) {
+    for (const s of this.rows) {
+      if (s.prId === prId && s.cycle === cycle && s.status === 'waiting') s.status = 'cancelled';
+    }
   }
 }
 
@@ -523,6 +556,12 @@ export interface PrWorld {
   workflow(actor?: Partial<PrActor>): PrWorkflowService;
   /** a complete draft (one line of 870,710.00 SDG) owned by the requester */
   seedDraft(pr?: Partial<PrRecord>, lines?: Partial<PrLineRecord>[]): PrRecord;
+  /** workflow acting as a member holding `role` (finance checker, approver, org admin…) */
+  as(userId: string, role?: keyof typeof SEEDED_ROLES): PrWorkflowService;
+  /** a draft submitted by the requester: pending_finance_check, cycle 1 */
+  seedSubmitted(pr?: Partial<PrRecord>, lines?: Partial<PrLineRecord>[]): Promise<PrRecord>;
+  /** the stored PR and the pending step of its current cycle */
+  current(prId: string): Promise<{ pr: PrRecord; step: PrStepRecord | undefined }>;
 }
 
 export function buildPrWorld(): PrWorld {
@@ -563,6 +602,16 @@ export function buildPrWorld(): PrWorld {
   const financeUser = buildCandidate({ roleIds: [finance.id] });
   const approverUser = buildCandidate({ roleIds: [approver.id] });
   routing.members.push(financeUser, approverUser);
+  db.actors.set(financeUser.userId, {
+    nameAr: 'المدقق المالي',
+    nameEn: 'Fatima Finance',
+    position: 'Finance Officer',
+  });
+  db.actors.set(approverUser.userId, {
+    nameAr: 'المعتمد',
+    nameEn: 'Omer Approver',
+    position: 'Area Manager',
+  });
 
   const requesterId = randomUUID();
   db.actors.set(requesterId, {
@@ -579,6 +628,13 @@ export function buildPrWorld(): PrWorld {
     officeIds: [MAD_OFFICE_ID],
     orgWideAccess: false,
   };
+
+  const roleOf = (userId: string): keyof typeof SEEDED_ROLES =>
+    userId === financeUser.userId
+      ? 'finance_checker'
+      : userId === approverUser.userId
+        ? 'approver'
+        : 'requester';
 
   const world: PrWorld = {
     db,
@@ -651,7 +707,35 @@ export function buildPrWorld(): PrWorld {
       db.seed(record, lineRows);
       return record;
     },
+
+    as(userId, role = roleOf(userId)) {
+      return world.workflow({
+        userId,
+        permissions: new Set<Permission>(SEEDED_ROLES[role].permissions),
+      });
+    },
+
+    async seedSubmitted(pr, lines) {
+      const draft = world.seedDraft(pr, lines);
+      await world.workflow().submit(draft.id, { expectedVersion: draft.version });
+      return (await db.find(draft.id))!;
+    },
+
+    async current(prId) {
+      const pr = (await db.find(prId))!;
+      const step = (await steps.list(prId, pr.submissionCycle)).find((s) => s.status === 'pending');
+      return { pr, step };
+    },
   };
+
+  // signatures come from the approval_action rows, as in ApprovalRuleRepository
+  const arranged = routing.prSignatures.bind(routing);
+  routing.prSignatures = async (prId) => [
+    ...(await arranged(prId)),
+    ...world.actions.rows
+      .filter((a) => a.prId === prId)
+      .map((a) => ({ userId: a.userId, action: a.action, cycle: a.cycle, stepOrder: a.stepOrder })),
+  ];
 
   function repos(routingService = new ApprovalRoutingService(routing, steps.write)): PrRepos {
     return {

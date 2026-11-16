@@ -1,7 +1,8 @@
 'use client';
 
 // Edit screen of a draft or returned PR: the form with autosave, attachments, submit and (for a
-// never-submitted draft) delete.
+// never-submitted draft) delete. A returned PR shows the return reason and keeps its number; its
+// resubmission starts a new approval cycle (FR-038).
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { PrDetail } from '@ngo/shared';
 import {
@@ -24,6 +25,7 @@ import { AttachmentsPanel } from './attachments-panel';
 import { fromDetail, prSubmitFormSchema, type PrFormValues } from './form-model';
 import { PrForm } from './pr-form';
 import { PrStatusBadge } from './pr-status-badge';
+import { ReturnedBanner } from './returned-banner';
 import { SubmitButton } from './submit-button';
 import { useAutosave, type AutosaveStatus } from './use-autosave';
 
@@ -97,6 +99,10 @@ export function PrEditor({
           </Button>
         ) : null}
       </div>
+
+      {pr.status === 'returned' && pr.returnReason ? (
+        <ReturnedBanner reason={pr.returnReason} resubmit />
+      ) : null}
 
       {autosave.status === 'conflict' ? (
         <div

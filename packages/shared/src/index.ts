@@ -20,3 +20,4 @@ export * from './schemas/user';
 export * from './schemas/role';
 export * from './schemas/approval-rule';
 export * from './schemas/pr';
+export * from './schemas/pr-actions';

@@ -52,4 +52,21 @@ export class NotificationService {
       },
     ]);
   }
+
+  /** `pr_reassigned` to the user a step was assigned to. */
+  async notifyReassigned(
+    pr: NotifiedPr,
+    step: Pick<EligibilityStep, 'kind'>,
+    userId: string,
+    actorName: string
+  ): Promise<void> {
+    await this.store.insertMany([
+      {
+        userId,
+        kind: 'pr_reassigned',
+        prId: pr.id,
+        params: { number: pr.number, stepKind: step.kind, actorName },
+      },
+    ]);
+  }
 }

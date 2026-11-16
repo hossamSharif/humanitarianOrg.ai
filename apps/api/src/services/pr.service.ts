@@ -24,6 +24,7 @@ import {
   type PrDraftLine,
   type PrDraftSaved,
   type PrDraftUpdate,
+  type PrEligibleUser,
   type PrLineView,
   type PrStepView,
 } from '@ngo/shared';
@@ -413,12 +414,25 @@ export class PrService {
         pr.submissionCycle > 0 ? repos.steps.list(id, pr.submissionCycle) : Promise.resolve([]),
       ]);
 
+      // the same rules the workflow commands enforce: segregation of duties (the requester, or
+      // a signer of another step) and step eligibility; a frozen grant blocks signing only
+      const grantFrozen = isPending(pr.status) && grant !== null && grant.status !== 'active';
+      const signedOther = (stepOrder: number, cycle: number) =>
+        actions.some(
+          (a) =>
+            a.userId === this.actor.userId &&
+            a.action === 'approve' &&
+            (a.stepOrder !== stepOrder || a.cycle === cycle)
+        );
       const stepViews: PrStepView[] = [];
       for (const s of steps) {
-        const actionable = isPending(pr.status) && s.status === 'pending';
+        const actionable =
+          isPending(pr.status) && s.status === 'pending' && s.stepOrder === pr.currentStepOrder;
         const eligible =
           actionable &&
           pr.requestingOfficeId !== null &&
+          pr.requesterId !== this.actor.userId &&
+          !signedOther(s.stepOrder, s.cycle) &&
           (await repos.routing.isEligible(
             this.actor.userId,
             {
@@ -432,7 +446,7 @@ export class PrService {
           ));
         stepViews.push({
           ...s,
-          canApprove: eligible,
+          canApprove: eligible && !grantFrozen,
           canReject: eligible,
           canReturn: eligible,
           canChangeBudgetLine: eligible && s.kind === 'finance_check',
@@ -442,6 +456,7 @@ export class PrService {
       return {
         ...pr,
         grantCurrency: grant?.currency ?? null,
+        grantFrozen,
         lines: lines.map(toLineView),
         totals: sumByCurrency(
           lines.flatMap((l) =>
@@ -452,20 +467,57 @@ export class PrService {
         steps: stepViews,
         actions,
         reservations,
-        availableActions: this.availableActions(pr),
+        availableActions: this.availableActions(pr, stepViews),
       };
     });
   }
 
-  /** Actions of the requester's side; approval actions are added with US5. */
-  availableActions(pr: PrRecord): PrAction[] {
+  /** The requester's actions, then the step actions of the current step and reassignment. */
+  availableActions(pr: PrRecord, steps: readonly PrStepView[] = []): PrAction[] {
     const actions: PrAction[] = [];
     if (pr.requesterId === this.actor.userId && isEditableByRequester(pr.status)) {
       actions.push('update');
       if (this.actor.permissions.has(PERMISSIONS.PR_CREATE)) actions.push('submit');
       if (pr.status === 'draft' && pr.number === null) actions.push('delete');
     }
+    if (steps.some((s) => s.canApprove)) actions.push('approve');
+    if (steps.some((s) => s.canReject)) actions.push('reject');
+    if (steps.some((s) => s.canReturn)) actions.push('return');
+    if (steps.some((s) => s.canChangeBudgetLine)) actions.push('change_budget_line');
+    if (isPending(pr.status) && this.actor.permissions.has(PERMISSIONS.PR_REASSIGN)) {
+      actions.push('reassign');
+    }
     return actions;
+  }
+
+  /** GET /prs/:id/steps/:stepId/eligible-users — who an open step can be reassigned to. */
+  eligibleUsers(prId: string, stepId: string): Promise<PrEligibleUser[]> {
+    return this.deps.run(async ({ prs, steps, routing }) => {
+      if (!this.actor.permissions.has(PERMISSIONS.PR_REASSIGN)) {
+        throw new AppError('FORBIDDEN', 'Missing permission pr:reassign');
+      }
+      const pr = await getPr(prs, prId);
+      const step = (await steps.list(prId, pr.submissionCycle)).find((s) => s.id === stepId);
+      if (!step || pr.requestingOfficeId === null) {
+        throw new AppError('NOT_FOUND', 'pr_approval_step not found');
+      }
+      const users = await routing.eligibleUsers(
+        {
+          cycle: step.cycle,
+          stepOrder: step.stepOrder,
+          kind: step.kind,
+          requiredRoleId: step.requiredRoleId,
+          assignedUserId: null,
+        },
+        { id: pr.id, requesterId: pr.requesterId, requestingOfficeId: pr.requestingOfficeId }
+      );
+      const out: PrEligibleUser[] = [];
+      for (const u of users) {
+        const a = await prs.actor(u.userId);
+        out.push({ userId: u.userId, nameAr: a.nameAr, nameEn: a.nameEn, position: a.position });
+      }
+      return out;
+    });
   }
 
   // -------------------------------------------------------------------------------------------

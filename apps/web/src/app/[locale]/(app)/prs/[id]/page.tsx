@@ -5,9 +5,11 @@
 import { Button } from '@ngo/ui';
 import { Pencil } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { ActionsPanel } from '@/features/pr/actions-panel';
 import { usePr } from '@/features/pr/api';
 import { AttachmentsPanel } from '@/features/pr/attachments-panel';
 import { PrHeaderView } from '@/features/pr/pr-header-view';
+import { ReturnedBanner } from '@/features/pr/returned-banner';
 import { PrLinesView } from '@/features/pr/pr-lines-view';
 import { PrStatusBadge } from '@/features/pr/pr-status-badge';
 import { PrStepsView } from '@/features/pr/pr-steps-view';
@@ -48,6 +50,10 @@ export default function PrDetailPage({ params }: { params: { id: string } }) {
           </Button>
         ) : null}
       </div>
+      {pr.status === 'returned' && pr.returnReason ? (
+        <ReturnedBanner reason={pr.returnReason} />
+      ) : null}
+      <ActionsPanel pr={pr} />
       <PrHeaderView pr={pr} />
       <PrLinesView pr={pr} />
       <PrStepsView pr={pr} />

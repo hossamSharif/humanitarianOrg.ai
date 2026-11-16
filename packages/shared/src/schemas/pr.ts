@@ -247,6 +247,8 @@ export interface PrDetail {
   doaRateDate: string | null;
   doaRateSource: string | null;
   grantCurrency: string | null;
+  /** pending PR whose grant is suspended or closed: approve is blocked (FR-022) */
+  grantFrozen: boolean;
   grantRateToBase: string | null;
   grantRateDate: string | null;
   grantRateSource: string | null;

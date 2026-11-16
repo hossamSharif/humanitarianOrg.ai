@@ -128,6 +128,31 @@ export interface SubmissionValues {
   printSnapshot: PrintSnapshot;
 }
 
+/** Header fields a workflow command after submission may write (US5–US6). */
+export interface StatusValues {
+  status?: PrStatus;
+  currentStepOrder?: number | null;
+  approvedAt?: string;
+  closedAt?: string;
+  rejectReason?: string;
+  rejectedBy?: string;
+  returnReason?: string;
+  cancelReason?: string;
+  cancelledBy?: string;
+}
+
+const STATUS_COLUMN: Record<keyof StatusValues, string> = {
+  status: 'status',
+  currentStepOrder: 'current_step_order',
+  approvedAt: 'approved_at',
+  closedAt: 'closed_at',
+  rejectReason: 'reject_reason',
+  rejectedBy: 'rejected_by',
+  returnReason: 'return_reason',
+  cancelReason: 'cancel_reason',
+  cancelledBy: 'cancelled_by',
+};
+
 export interface TenantSettings {
   baseCurrency: string;
   doaReferenceCurrency: string;
@@ -218,6 +243,13 @@ export interface PrStore {
 
   lockLine(id: string, values: LockedLineValues): Promise<void>;
   markSubmitted(id: string, values: SubmissionValues): Promise<number>;
+  /** Status, step pointer, reasons and timestamps of a transition; returns the new version. */
+  updateStatus(id: string, values: StatusValues): Promise<number>;
+  /**
+   * Finance check moves a line to another budget line: writes the line, its budget-line code in
+   * the print snapshot and bumps the PR version (returned).
+   */
+  setLineBudgetLine(prId: string, lineId: string, budgetLineId: string): Promise<number>;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -653,6 +685,32 @@ export class PrRepository implements PrStore {
         total_grant_currency = ${v.totalGrantCurrency},
         print_snapshot = ${this.sql.json(v.printSnapshot as unknown as postgresJson)}
       where id = ${id} returning version`;
+    if (!row) throw new AppError('NOT_FOUND', 'purchase_requisition not found');
+    return row.version;
+  }
+
+  async updateStatus(id: string, values: StatusValues): Promise<number> {
+    const columns = toColumns(values, STATUS_COLUMN);
+    if (Object.keys(columns).length === 0) return this.touch(id);
+    const [row] = await this.sql<{ version: number }[]>`
+      update public.purchase_requisition set ${this.sql(columns)}
+      where id = ${id} returning version`;
+    if (!row) throw new AppError('NOT_FOUND', 'purchase_requisition not found');
+    return row.version;
+  }
+
+  async setLineBudgetLine(prId: string, lineId: string, budgetLineId: string) {
+    await this.sql`
+      update public.pr_line set budget_line_id = ${budgetLineId}
+      where id = ${lineId} and pr_id = ${prId}`;
+    const [row] = await this.sql<{ version: number }[]>`
+      update public.purchase_requisition p set print_snapshot = case
+        when p.print_snapshot #> array['lines', ${lineId}::text] is null then p.print_snapshot
+        else jsonb_set(p.print_snapshot, array['lines', ${lineId}::text, 'budgetLineCode'],
+                       to_jsonb((select b.code from public.budget_line b
+                                 where b.id = ${budgetLineId})))
+      end
+      where p.id = ${prId} returning version`;
     if (!row) throw new AppError('NOT_FOUND', 'purchase_requisition not found');
     return row.version;
   }

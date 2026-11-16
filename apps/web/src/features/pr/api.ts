@@ -1,8 +1,8 @@
 'use client';
 
 // Data hooks for purchase requisitions (contracts/rest-api.md "Purchase requisitions"): the
-// detail read model, draft create / autosave / delete, submit, and attachments through Storage
-// signed URLs.
+// detail read model, draft create / autosave / delete, submit, the step actions (approve, reject,
+// return, change budget line, reassign) and attachments through Storage signed URLs.
 import type {
   Activity,
   AttachmentUpload,
@@ -11,12 +11,18 @@ import type {
   AttachmentUploadTarget,
   Grant,
   ListResponse,
+  PrActionResult,
+  PrApprove,
   PrAttachmentView,
+  PrChangeBudgetLine,
   PrCreate,
   PrCreated,
   PrDetail,
   PrDraftSaved,
   PrDraftUpdate,
+  PrEligibleUser,
+  PrReasonAction,
+  PrReassign,
   PrSubmitResult,
 } from '@ngo/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -62,6 +68,68 @@ export function useSubmitPr(id: string) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.prs.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.grants.all });
     },
+  });
+}
+
+// ---------------------------------------------------------------------------------------------
+// Step actions (US5)
+// ---------------------------------------------------------------------------------------------
+
+/** After a step action the PR, the lists, My tasks and budget figures may all have changed. */
+function useStepAction<V>(path: (vars: V) => string, body: (vars: V) => unknown) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: V) => api.post<PrActionResult>(path(vars), body(vars)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.prs.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.grants.all });
+    },
+  });
+}
+
+export function useApprovePr(id: string) {
+  return useStepAction<PrApprove>(
+    () => `/prs/${id}/approve`,
+    (v) => v
+  );
+}
+
+export function useRejectPr(id: string) {
+  return useStepAction<PrReasonAction>(
+    () => `/prs/${id}/reject`,
+    (v) => v
+  );
+}
+
+export function useReturnPr(id: string) {
+  return useStepAction<PrReasonAction>(
+    () => `/prs/${id}/return`,
+    (v) => v
+  );
+}
+
+export function useChangeBudgetLine(id: string) {
+  return useStepAction<PrChangeBudgetLine & { lineId: string }>(
+    (v) => `/prs/${id}/lines/${v.lineId}/budget-line`,
+    ({ lineId: _lineId, ...body }) => body
+  );
+}
+
+export function useReassignStep(id: string) {
+  return useStepAction<PrReassign & { stepId: string }>(
+    (v) => `/prs/${id}/steps/${v.stepId}/reassign`,
+    ({ stepId: _stepId, ...body }) => body
+  );
+}
+
+/** Users a step can be reassigned to (needs pr:reassign). */
+export function useStepEligibleUsers(prId: string, stepId: string | null) {
+  return useQuery({
+    queryKey: [...queryKeys.prs.detail(prId), 'eligible-users', stepId],
+    enabled: Boolean(stepId),
+    queryFn: async () =>
+      (await api.get<{ data: PrEligibleUser[] }>(`/prs/${prId}/steps/${stepId}/eligible-users`))
+        .data,
   });
 }
 
