@@ -27,3 +27,6 @@ export * from './schemas/pr-list';
 export * from './schemas/history';
 export * from './schemas/report';
 export * from './schemas/notification';
+export * from './doc-types';
+export * from './procurement';
+export * from './accounting';

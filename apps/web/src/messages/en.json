@@ -325,7 +325,29 @@
     "users": "Users",
     "roles": "Roles",
     "approvalRules": "Approval rules",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "groups": {
+      "procurement": "Procurement",
+      "finance": "Finance",
+      "reports": "Reports",
+      "settings": "Settings"
+    },
+    "suppliers": "Suppliers",
+    "rfqs": "RFQs",
+    "tenders": "Tenders",
+    "evaluations": "Evaluations",
+    "posContracts": "POs & Contracts",
+    "receiving": "Receiving",
+    "invoices": "Invoices",
+    "paymentRequests": "Payment Requests",
+    "directPayments": "Direct Payments",
+    "advances": "Advances",
+    "vouchers": "Vouchers",
+    "bankCash": "Bank & Cash",
+    "chartOfAccounts": "Chart of Accounts",
+    "periods": "Periods",
+    "allReports": "All reports",
+    "procurementSettings": "Procurement settings"
   },
   "status": {
     "draft": "Draft",
@@ -934,5 +956,18 @@
         "running_costs": "Running costs"
       }
     }
-  }
+  },
+  "procurement": {},
+  "suppliers": {},
+  "sourcing": {},
+  "analysis": {},
+  "orders": {},
+  "receiving": {},
+  "invoices": {},
+  "payments": {},
+  "vouchers": {},
+  "accounting": {},
+  "reports002": {},
+  "trail": {},
+  "documents": {}
 }

@@ -325,7 +325,29 @@
     "users": "المستخدمون",
     "roles": "الأدوار",
     "approvalRules": "قواعد الاعتماد",
-    "notifications": "الإشعارات"
+    "notifications": "الإشعارات",
+    "groups": {
+      "procurement": "المشتريات",
+      "finance": "المالية",
+      "reports": "التقارير",
+      "settings": "الإعدادات"
+    },
+    "suppliers": "الموردون",
+    "rfqs": "طلبات عروض الأسعار",
+    "tenders": "المناقصات",
+    "evaluations": "التقييمات",
+    "posContracts": "أوامر الشراء والعقود",
+    "receiving": "الاستلام",
+    "invoices": "الفواتير",
+    "paymentRequests": "طلبات الدفع",
+    "directPayments": "المدفوعات المباشرة",
+    "advances": "السلف",
+    "vouchers": "السندات",
+    "bankCash": "البنوك والصناديق",
+    "chartOfAccounts": "دليل الحسابات",
+    "periods": "الفترات المحاسبية",
+    "allReports": "كل التقارير",
+    "procurementSettings": "إعدادات المشتريات"
   },
   "status": {
     "draft": "مسودة",
@@ -934,5 +956,18 @@
         "running_costs": "تكاليف تشغيلية"
       }
     }
-  }
+  },
+  "procurement": {},
+  "suppliers": {},
+  "sourcing": {},
+  "analysis": {},
+  "orders": {},
+  "receiving": {},
+  "invoices": {},
+  "payments": {},
+  "vouchers": {},
+  "accounting": {},
+  "reports002": {},
+  "trail": {},
+  "documents": {}
 }
