@@ -35,6 +35,11 @@ export function useTenantProfile() {
   });
 }
 
+/** The organization's timezone for DD/MM/YYYY HH:mm display (research R15). */
+export function useTenantTimeZone(): string {
+  return useTenantProfile().data?.timezone ?? 'Africa/Khartoum';
+}
+
 export function useUpdateTenant() {
   const queryClient = useQueryClient();
   return useMutation({

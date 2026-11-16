@@ -1,15 +1,18 @@
 'use client';
 
-// Entry point for purchase requisitions; the searchable list replaces the intro in US8 (T153).
+// Purchase requisitions list (US8, FR-046): filters and search in the URL, server-side paging.
 import { PERMISSIONS } from '@ngo/shared';
 import { Button } from '@ngo/ui';
 import { Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { Suspense } from 'react';
+import { PrListFiltersBar } from '@/features/pr/pr-list-filters';
+import { PrListTable } from '@/features/pr/pr-list-table';
 import { Link } from '@/i18n/routing';
 import { useHasPermission } from '@/lib/use-me';
 
 export default function PrsPage() {
-  const t = useTranslations('pr.list');
+  const t = useTranslations('prList');
   const can = useHasPermission();
   return (
     <div className="space-y-4">
@@ -24,7 +27,11 @@ export default function PrsPage() {
           </Button>
         ) : null}
       </div>
-      <p className="text-sm text-muted-foreground">{t('intro')}</p>
+      {/* useSearchParams needs a Suspense boundary in the app router */}
+      <Suspense>
+        <PrListFiltersBar />
+        <PrListTable />
+      </Suspense>
     </div>
   );
 }

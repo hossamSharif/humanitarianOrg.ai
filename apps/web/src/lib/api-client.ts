@@ -100,6 +100,44 @@ export async function apiRequest<T>(
   }
 }
 
+/** GET a file (e.g. an Excel export) with the session token; errors as ApiRequestError. */
+export async function apiDownload(
+  path: string,
+  query?: RequestOptions['query']
+): Promise<{ blob: Blob; fileName: string | null }> {
+  const token = await accessToken();
+  let response: Response;
+  try {
+    response = await fetch(buildUrl(path, query), {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  } catch {
+    throw new ApiRequestError(0, 'NETWORK_ERROR', 'Network request failed');
+  }
+  if (!response.ok) {
+    const payload: unknown = await response.json().catch(() => null);
+    if (isApiError(payload)) {
+      throw new ApiRequestError(response.status, payload.code, payload.message, payload.details);
+    }
+    throw new ApiRequestError(response.status, 'INTERNAL_ERROR', `HTTP ${response.status}`);
+  }
+  const disposition = response.headers.get('Content-Disposition') ?? '';
+  const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? null;
+  return { blob: await response.blob(), fileName };
+}
+
+/** Saves a blob through a temporary link. */
+export function saveBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export const api = {
   get: <T>(path: string, options?: Omit<RequestOptions, 'body' | 'idempotencyKey'>) =>
     apiRequest<T>('GET', path, options),

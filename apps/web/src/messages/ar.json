@@ -547,11 +547,6 @@
     "NETWORK_ERROR": "تعذّر الاتصال بالخادم. تحقق من اتصالك بالإنترنت."
   },
   "pr": {
-    "list": {
-      "title": "طلبات الشراء",
-      "new": "طلب شراء جديد",
-      "intro": "أنشئ طلب شراء جديدًا أو افتح طلبًا من إشعاراتك. ستتوفر القائمة الكاملة مع البحث في الإصدار القادم."
-    },
     "form": {
       "headerTitle": "بيانات الطلب",
       "newTitle": "طلب شراء جديد",
@@ -778,6 +773,165 @@
           "REJECTED": "مرفوض",
           "CANCELLED": "ملغى"
         }
+      }
+    }
+  },
+  "prList": {
+    "title": "طلبات الشراء",
+    "new": "طلب شراء جديد",
+    "draftNumber": "مسودة",
+    "empty": "لا توجد طلبات شراء مطابقة لهذه المرشحات.",
+    "range": "{from}–{to} من {total}",
+    "previous": "السابق",
+    "next": "التالي",
+    "columns": {
+      "number": "الرقم",
+      "status": "الحالة",
+      "prDate": "تاريخ الطلب",
+      "office": "المكتب",
+      "grant": "المنحة",
+      "requester": "مقدم الطلب",
+      "total": "الإجمالي",
+      "totalGrantCurrency": "بعملة المنحة"
+    },
+    "filters": {
+      "search": "بحث",
+      "searchPlaceholder": "ابحث برقم الطلب أو وصف الصنف",
+      "status": "الحالة",
+      "anyStatus": "كل الحالات",
+      "office": "المكتب",
+      "anyOffice": "كل مكاتبي",
+      "grant": "المنحة",
+      "anyGrant": "كل المنح",
+      "mine": "طلباتي فقط",
+      "dateFrom": "تاريخ الطلب من",
+      "dateTo": "تاريخ الطلب إلى",
+      "amountMin": "أقل مبلغ",
+      "amountMax": "أعلى مبلغ",
+      "amountHint": "المبالغ بعملة المنحة وتشمل الطلبات المقدَّمة فقط.",
+      "clear": "مسح المرشحات"
+    }
+  },
+  "myTasks": {
+    "title": "مهامي",
+    "intro": "طلبات الشراء التي تنتظر توقيعك.",
+    "empty": "لا شيء ينتظرك الآن.",
+    "columns": {
+      "step": "الخطوة",
+      "number": "الرقم",
+      "office": "المكتب",
+      "requester": "مقدم الطلب",
+      "amount": "المبلغ",
+      "waitingSince": "في الانتظار منذ"
+    }
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "bellUnread": "الإشعارات، {count} غير مقروءة",
+    "markAllRead": "تعليم الكل كمقروء",
+    "empty": "لا توجد إشعارات بعد.",
+    "kinds": {
+      "pr_action_required": "الطلب {number} في انتظار {step} منك",
+      "pr_approved": "اعتمد {actor} الطلب {number}",
+      "pr_rejected": "رفض {actor} الطلب {number}",
+      "pr_returned": "أعاد {actor} إليك الطلب {number}",
+      "pr_cancelled": "ألغى {actor} الطلب {number}",
+      "pr_reassigned": "أسند إليك {actor} خطوة {step} للطلب {number}"
+    }
+  },
+  "history": {
+    "title": "السجل",
+    "none": "لا يوجد سجل بعد.",
+    "empty": "(فارغ)",
+    "to": "تغيّر إلى",
+    "system": "النظام",
+    "lineAdded": "أُضيف البند {lineNo}",
+    "lineRemoved": "حُذف البند {lineNo}",
+    "lineField": "البند {lineNo} · {field}",
+    "attachmentAdded": "أُضيف مرفق",
+    "attachmentRemoved": "حُذف مرفق",
+    "actions": {
+      "create": "أُنشئ",
+      "update": "عُدّل",
+      "submit": "قُدّم",
+      "resubmit": "أُعيد تقديمه",
+      "approve": "وُقّع",
+      "reject": "رُفض",
+      "return": "أُعيد",
+      "cancel": "أُلغي",
+      "reassign": "أُعيد الإسناد",
+      "change_budget_line": "تغيّر بند الميزانية"
+    },
+    "fields": {
+      "prDate": "تاريخ الطلب",
+      "requestingOfficeId": "المكتب الطالب",
+      "grantId": "المنحة",
+      "deliverToOfficeId": "التسليم إلى",
+      "deliveryAddress": "عنوان التسليم",
+      "contactName": "اسم جهة الاتصال",
+      "contactPhone": "هاتف جهة الاتصال",
+      "requiredByDate": "مطلوب بحلول",
+      "activityId": "النشاط",
+      "purpose": "الغرض",
+      "prType": "النوع",
+      "description": "الوصف",
+      "specifications": "المواصفات",
+      "quantity": "الكمية",
+      "unitId": "الوحدة",
+      "unitCost": "سعر الوحدة",
+      "currency": "العملة",
+      "budgetLineId": "بند الميزانية",
+      "locationOfficeId": "الموقع"
+    }
+  },
+  "reports": {
+    "title": "حالة الميزانية",
+    "intro": "الميزانية والمحجوز والملتزم به والمتاح لكل بند ميزانية في المنحة.",
+    "grant": "المنحة",
+    "selectGrant": "اختر منحة",
+    "pickGrant": "اختر منحة لعرض حالة ميزانيتها.",
+    "exportPdf": "PDF",
+    "exportExcel": "Excel",
+    "openDrillDown": "عرض طلبات الشراء",
+    "drillDown": {
+      "reserved": "المحجوز على {code}",
+      "committed": "الملتزم به على {code}",
+      "all": "طلبات الشراء على {code}",
+      "description": "الحجوزات والالتزامات القائمة على هذا البند.",
+      "empty": "لا توجد طلبات شراء على هذا البند.",
+      "number": "الرقم",
+      "status": "الحالة",
+      "prDate": "تاريخ الطلب",
+      "office": "المكتب",
+      "amount": "المبلغ",
+      "total": "الإجمالي",
+      "restricted": "خارج مكاتبك"
+    },
+    "export": {
+      "title": "تقرير حالة الميزانية",
+      "grant": "المنحة",
+      "donor": "المانح",
+      "period": "فترة المنحة",
+      "currency": "العملة",
+      "generated": "تاريخ الإعداد",
+      "totals": "الإجماليات",
+      "columns": {
+        "code": "الرمز",
+        "description": "الوصف",
+        "category": "الفئة",
+        "budget": "الميزانية",
+        "reserved": "المحجوز",
+        "committed": "الملتزم به",
+        "actual": "الفعلي",
+        "available": "المتاح",
+        "pctUsed": "% المستخدم"
+      },
+      "categories": {
+        "supplies": "مستلزمات",
+        "services": "خدمات",
+        "staff": "موظفون",
+        "equipment": "معدات",
+        "running_costs": "تكاليف تشغيلية"
       }
     }
   }

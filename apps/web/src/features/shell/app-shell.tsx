@@ -8,6 +8,7 @@ import { Link, usePathname, useRouter } from '@/i18n/routing';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useApiError } from '@/lib/use-api-error';
 import { useMe } from '@/lib/use-me';
+import { NotificationBell } from '@/features/notifications/notification-bell';
 import { AppNav } from './app-nav';
 import { LocaleSwitcher } from './locale-switcher';
 import { OrgSwitcher } from './org-switcher';
@@ -80,6 +81,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <OrgSwitcher />
           <div className="ms-auto flex items-center gap-2">
+            {me?.tenantId ? <NotificationBell /> : null}
             <LocaleSwitcher />
             <Button variant="ghost" size="sm" onClick={signOut}>
               <LogOut className="me-2 h-4 w-4 rtl:rotate-180" aria-hidden />

@@ -9,6 +9,7 @@ import {
   prCreate,
   prDraftUpdate,
   prLineParams,
+  prListQuery,
   prPrintQuery,
   prReasonAction,
   prReassign,
@@ -20,6 +21,7 @@ import {
   type PrChangeBudgetLine,
   type PrCreate,
   type PrDraftUpdate,
+  type PrListQuery,
   type PrPrintQuery,
   type PrReasonAction,
   type PrReassign,
@@ -28,6 +30,7 @@ import {
 import { Router } from 'express';
 import { requirePermission } from '../middleware/permission';
 import { validate } from '../middleware/validate';
+import { PrHistoryService } from '../services/pr-history.service';
 import { PrPrintService } from '../services/pr-print.service';
 import { PrWorkflowService } from '../services/pr-workflow.service';
 import { PrService } from '../services/pr.service';
@@ -44,12 +47,31 @@ import { handle, type ServiceFactory } from './route-helpers';
 export function prsRouter(
   service: ServiceFactory<PrService> = PrService.forContext,
   workflow: ServiceFactory<PrWorkflowService> = PrWorkflowService.forContext,
-  print: ServiceFactory<PrPrintService> = PrPrintService.forContext
+  print: ServiceFactory<PrPrintService> = PrPrintService.forContext,
+  history: ServiceFactory<PrHistoryService> = PrHistoryService.forContext
 ): Router {
   const router = Router();
   const read = requirePermission(PERMISSIONS.PR_READ);
   const create = requirePermission(PERMISSIONS.PR_CREATE);
   const reassign = requirePermission(PERMISSIONS.PR_REASSIGN);
+
+  // --- list and My tasks (US8); registered before /prs/:id ------------------------------------
+
+  router.get(
+    '/prs',
+    read,
+    validate({ query: prListQuery }),
+    handle(async (req, res, ctx) => {
+      res.json(await service(ctx).list(req.query as unknown as PrListQuery));
+    })
+  );
+
+  router.get(
+    '/prs/my-tasks',
+    handle(async (_req, res, ctx) => {
+      res.json({ data: await service(ctx).myTasks() });
+    })
+  );
 
   router.post(
     '/prs',
@@ -66,6 +88,17 @@ export function prsRouter(
     validate({ params: idParam }),
     handle(async (req, res, ctx) => {
       res.json(await service(ctx).getDetail(req.params.id!));
+    })
+  );
+
+  // --- history (US8) -------------------------------------------------------------------------
+
+  router.get(
+    '/prs/:id/history',
+    read,
+    validate({ params: idParam }),
+    handle(async (req, res, ctx) => {
+      res.json({ data: await history(ctx).history(req.params.id!) });
     })
   );
 

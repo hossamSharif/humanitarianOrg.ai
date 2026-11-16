@@ -1,6 +1,16 @@
-// In-app notifications written inside the PR transition's transaction (research R16): the
-// eligible users of a step that became pending, or the requester when their PR moves on.
-import type { NotificationKind, NotificationStore } from '../repositories/notification.repository';
+// In-app notifications (research R16). Write side: rows inserted inside the PR transition's
+// transaction for the eligible users of a step that became pending, or the requester when their
+// PR moves on. Read side (US8, FR-048): the recipient's list, unread count and read marks.
+import type { NotificationItem, NotificationList, NotificationListQuery } from '@ngo/shared';
+import { withTenantTx } from '../db/tx';
+import { AppError } from '../middleware/error';
+import {
+  NotificationRepository,
+  type NotificationInboxStore,
+  type NotificationKind,
+  type NotificationStore,
+} from '../repositories/notification.repository';
+import type { RequestContext } from '../types/context';
 import type {
   ApprovalRoutingService,
   EligibilityPr,
@@ -68,5 +78,46 @@ export class NotificationService {
         params: { number: pr.number, stepKind: step.kind, actorName },
       },
     ]);
+  }
+}
+
+/** The caller's own notifications; every call is one tenant transaction (RLS as the caller). */
+export class NotificationInbox {
+  constructor(
+    private readonly userId: string,
+    private readonly run: <T>(fn: (store: NotificationInboxStore) => Promise<T>) => Promise<T>
+  ) {}
+
+  static forContext(ctx: RequestContext): NotificationInbox {
+    return new NotificationInbox(ctx.userId, (fn) =>
+      withTenantTx({ claims: ctx.claims, requestId: ctx.requestId }, (tx) =>
+        fn(new NotificationRepository(tx.sql, ctx.tenantId))
+      )
+    );
+  }
+
+  /** GET /notifications */
+  list(query: NotificationListQuery): Promise<NotificationList> {
+    return this.run(async (store) => {
+      const [data, unreadCount] = await Promise.all([
+        store.list(this.userId, { unreadOnly: query.unread === true, limit: query.limit }),
+        store.unreadCount(this.userId),
+      ]);
+      return { data, unreadCount };
+    });
+  }
+
+  /** POST /notifications/:id/read — 404 for anyone else's notification. */
+  markRead(id: string): Promise<NotificationItem> {
+    return this.run(async (store) => {
+      const item = await store.markRead(this.userId, id);
+      if (!item) throw new AppError('NOT_FOUND', 'notification not found');
+      return item;
+    });
+  }
+
+  /** POST /notifications/read-all */
+  markAllRead(): Promise<{ updated: number }> {
+    return this.run(async (store) => ({ updated: await store.markAllRead(this.userId) }));
   }
 }

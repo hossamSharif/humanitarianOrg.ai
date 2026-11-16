@@ -34,7 +34,7 @@ if (!integrationEnabled) {
   );
 }
 
-const isLocalDb = () => /@(127\.0\.0\.1|localhost)[:/]/.test(process.env.DATABASE_URL ?? '');
+export const isLocalDb = () => /@(127\.0\.0\.1|localhost)[:/]/.test(process.env.DATABASE_URL ?? '');
 
 let ownerSql: postgres.Sql | undefined;
 

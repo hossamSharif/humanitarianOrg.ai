@@ -4,6 +4,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   anonClient,
+  createBudgetLine,
+  createDraftPr,
   createGrant,
   createTenant,
   createUser,
@@ -112,5 +114,64 @@ describe.runIf(integrationEnabled)('RLS isolation between tenants', () => {
     const me = await as(token).get('/me').expect(200);
     expect(me.body.tenantId).toBeNull();
     expect(me.body.permissions).toEqual([]);
+  });
+});
+
+// T143 — office scoping of PRs (US8-3, FR-018): a Kosti-only user sees Kosti PRs plus their own
+// in `GET /prs`, and Madani PR ids answer 404; an organization-wide user sees every office.
+describe.runIf(integrationEnabled)('RLS office scoping of PRs', () => {
+  let tenant: TestTenant;
+  let kostiToken: string;
+  let orgWideToken: string;
+  const prs = {} as Record<'madani' | 'kosti' | 'ownInMadani', string>;
+
+  beforeAll(async () => {
+    ensureMigrated();
+    await truncateTenantTables();
+    tenant = await createTenant({ nameEn: 'Office Scope Org' });
+    const madaniRequester = await createUser(tenant, { roles: ['requester'], offices: ['MAD'] });
+    const kostiUser = await createUser(tenant, {
+      roles: ['viewer', 'requester'],
+      offices: ['KST'],
+    });
+    const orgWide = await createUser(tenant, { roles: ['viewer'], orgWideAccess: true });
+    [kostiToken, orgWideToken] = await Promise.all([tokenFor(kostiUser), tokenFor(orgWide)]);
+
+    const grant = await createGrant(tenant, { offices: ['MAD', 'KST'] });
+    const line = await createBudgetLine(tenant, grant.id);
+    const draft = (user: TestUser, office: string) =>
+      createDraftPr(tenant, user, { grantId: grant.id, budgetLineId: line.id, office });
+    prs.madani = (await draft(madaniRequester, 'MAD')).id;
+    prs.kosti = (await draft(madaniRequester, 'KST')).id;
+    // the Kosti user's own PR for Madani stays visible to them
+    prs.ownInMadani = (await draft(kostiUser, 'MAD')).id;
+  });
+
+  afterAll(async () => {
+    await cleanupTestData();
+    await closeOwnerDb();
+  });
+
+  const listIds = async (token: string) => {
+    const res = await as(token).get('/prs?pageSize=200');
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    return (res.body.data as { id: string }[]).map((p) => p.id).sort();
+  };
+
+  it('a Kosti-only user lists Kosti PRs and their own', async () => {
+    expect(await listIds(kostiToken)).toEqual([prs.kosti, prs.ownInMadani].sort());
+  });
+
+  it('a Kosti-only user gets 404 on a Madani PR', async () => {
+    for (const path of [`/prs/${prs.madani}`, `/prs/${prs.madani}/history`]) {
+      const res = await as(kostiToken).get(path);
+      expect(res.status, path).toBe(404);
+      expect(res.body.code).toBe('NOT_FOUND');
+    }
+    expect((await as(kostiToken).get(`/prs/${prs.ownInMadani}`)).status).toBe(200);
+  });
+
+  it('an organization-wide user sees every office', async () => {
+    expect(await listIds(orgWideToken)).toEqual(Object.values(prs).sort());
   });
 });

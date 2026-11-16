@@ -547,11 +547,6 @@
     "NETWORK_ERROR": "Could not reach the server. Check your internet connection."
   },
   "pr": {
-    "list": {
-      "title": "Purchase requisitions",
-      "new": "New purchase requisition",
-      "intro": "Create a purchase requisition, or open one from your notifications. The full list with search arrives with the next release."
-    },
     "form": {
       "headerTitle": "Requisition details",
       "newTitle": "New purchase requisition",
@@ -778,6 +773,165 @@
           "REJECTED": "REJECTED",
           "CANCELLED": "CANCELLED"
         }
+      }
+    }
+  },
+  "prList": {
+    "title": "Purchase requisitions",
+    "new": "New purchase requisition",
+    "draftNumber": "Draft",
+    "empty": "No purchase requisitions match these filters.",
+    "range": "{from}–{to} of {total}",
+    "previous": "Previous",
+    "next": "Next",
+    "columns": {
+      "number": "Number",
+      "status": "Status",
+      "prDate": "PR date",
+      "office": "Office",
+      "grant": "Grant",
+      "requester": "Requested by",
+      "total": "Total",
+      "totalGrantCurrency": "In grant currency"
+    },
+    "filters": {
+      "search": "Search",
+      "searchPlaceholder": "Search by PR number or item description",
+      "status": "Status",
+      "anyStatus": "Any status",
+      "office": "Office",
+      "anyOffice": "All my offices",
+      "grant": "Grant",
+      "anyGrant": "Any grant",
+      "mine": "Only my requests",
+      "dateFrom": "PR date from",
+      "dateTo": "PR date to",
+      "amountMin": "Minimum amount",
+      "amountMax": "Maximum amount",
+      "amountHint": "Amounts are in the grant currency and match submitted requisitions only.",
+      "clear": "Clear filters"
+    }
+  },
+  "myTasks": {
+    "title": "My tasks",
+    "intro": "Purchase requisitions waiting for your signature.",
+    "empty": "Nothing is waiting for you right now.",
+    "columns": {
+      "step": "Step",
+      "number": "Number",
+      "office": "Office",
+      "requester": "Requested by",
+      "amount": "Amount",
+      "waitingSince": "Waiting since"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "bellUnread": "Notifications, {count} unread",
+    "markAllRead": "Mark all as read",
+    "empty": "No notifications yet.",
+    "kinds": {
+      "pr_action_required": "{number} is waiting for your {step}",
+      "pr_approved": "{number} was approved by {actor}",
+      "pr_rejected": "{number} was rejected by {actor}",
+      "pr_returned": "{number} was returned to you by {actor}",
+      "pr_cancelled": "{number} was cancelled by {actor}",
+      "pr_reassigned": "{actor} assigned you the {step} of {number}"
+    }
+  },
+  "history": {
+    "title": "History",
+    "none": "No history yet.",
+    "empty": "(empty)",
+    "to": "changed to",
+    "system": "System",
+    "lineAdded": "Line {lineNo} added",
+    "lineRemoved": "Line {lineNo} removed",
+    "lineField": "Line {lineNo} · {field}",
+    "attachmentAdded": "Attachment added",
+    "attachmentRemoved": "Attachment removed",
+    "actions": {
+      "create": "Created",
+      "update": "Edited",
+      "submit": "Submitted",
+      "resubmit": "Resubmitted",
+      "approve": "Signed",
+      "reject": "Rejected",
+      "return": "Returned",
+      "cancel": "Cancelled",
+      "reassign": "Reassigned",
+      "change_budget_line": "Budget line changed"
+    },
+    "fields": {
+      "prDate": "PR date",
+      "requestingOfficeId": "Requesting office",
+      "grantId": "Grant",
+      "deliverToOfficeId": "Deliver to",
+      "deliveryAddress": "Delivery address",
+      "contactName": "Contact name",
+      "contactPhone": "Contact phone",
+      "requiredByDate": "Required by",
+      "activityId": "Activity",
+      "purpose": "Purpose",
+      "prType": "Type",
+      "description": "Description",
+      "specifications": "Specifications",
+      "quantity": "Quantity",
+      "unitId": "Unit",
+      "unitCost": "Unit cost",
+      "currency": "Currency",
+      "budgetLineId": "Budget line",
+      "locationOfficeId": "Location"
+    }
+  },
+  "reports": {
+    "title": "Budget status",
+    "intro": "Budget, reserved, committed and available amounts per budget line of a grant.",
+    "grant": "Grant",
+    "selectGrant": "Choose a grant",
+    "pickGrant": "Choose a grant to see its budget status.",
+    "exportPdf": "PDF",
+    "exportExcel": "Excel",
+    "openDrillDown": "Show the purchase requisitions",
+    "drillDown": {
+      "reserved": "Reserved on {code}",
+      "committed": "Committed on {code}",
+      "all": "Purchase requisitions on {code}",
+      "description": "Open reservations and commitments of this budget line.",
+      "empty": "No purchase requisitions hold this budget line.",
+      "number": "Number",
+      "status": "Status",
+      "prDate": "PR date",
+      "office": "Office",
+      "amount": "Amount",
+      "total": "Total",
+      "restricted": "Outside your offices"
+    },
+    "export": {
+      "title": "Budget status report",
+      "grant": "Grant",
+      "donor": "Donor",
+      "period": "Grant period",
+      "currency": "Currency",
+      "generated": "Generated",
+      "totals": "Totals",
+      "columns": {
+        "code": "Code",
+        "description": "Description",
+        "category": "Category",
+        "budget": "Budget",
+        "reserved": "Reserved",
+        "committed": "Committed",
+        "actual": "Actual",
+        "available": "Available",
+        "pctUsed": "% used"
+      },
+      "categories": {
+        "supplies": "Supplies",
+        "services": "Services",
+        "staff": "Staff",
+        "equipment": "Equipment",
+        "running_costs": "Running costs"
       }
     }
   }

@@ -1,7 +1,7 @@
 'use client';
 
 // Data hooks for purchase requisitions (contracts/rest-api.md "Purchase requisitions"): the
-// detail read model, draft create / autosave / delete, submit, the step actions (approve, reject,
+// list, My tasks and history (US8), the detail read model, draft create / autosave / delete, submit, the step actions (approve, reject,
 // return, change budget line, reassign), cancel, attachments through Storage signed URLs and the
 // print data.
 import type {
@@ -12,6 +12,7 @@ import type {
   AttachmentUploadTarget,
   Grant,
   ListResponse,
+  MyTaskItem,
   PrActionResult,
   PrApprove,
   PrAttachmentView,
@@ -23,6 +24,8 @@ import type {
   PrDraftSaved,
   PrDraftUpdate,
   PrEligibleUser,
+  PrHistoryEntry,
+  PrListItem,
   PrPrintData,
   PrReasonAction,
   PrReassign,
@@ -33,6 +36,44 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+
+/** Query-string form of the list filters (the URL search params of the list page). */
+export interface PrListFilters {
+  status?: string[];
+  officeId?: string;
+  grantId?: string;
+  requesterId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  amountMin?: string;
+  amountMax?: string;
+  q?: string;
+  sort?: string;
+  page: number;
+  pageSize: number;
+}
+
+export function usePrList(filters: PrListFilters) {
+  return useQuery({
+    queryKey: queryKeys.prs.list({ ...filters }),
+    queryFn: () => api.get<ListResponse<PrListItem>>('/prs', { query: { ...filters } }),
+    placeholderData: (previous) => previous,
+  });
+}
+
+export function useMyTasks() {
+  return useQuery({
+    queryKey: queryKeys.prs.myTasks,
+    queryFn: async () => (await api.get<{ data: MyTaskItem[] }>('/prs/my-tasks')).data,
+  });
+}
+
+export function usePrHistory(id: string) {
+  return useQuery({
+    queryKey: [...queryKeys.prs.detail(id), 'history'],
+    queryFn: async () => (await api.get<{ data: PrHistoryEntry[] }>(`/prs/${id}/history`)).data,
+  });
+}
 
 export function usePr(id: string) {
   return useQuery({

@@ -15,6 +15,8 @@ import {
   sumByCurrency,
   type AttachmentUpload,
   type AttachmentUploadTarget,
+  type ListResponse,
+  type MyTaskItem,
   type Permission,
   type PrAction,
   type PrAttachmentView,
@@ -27,6 +29,8 @@ import {
   type PrDraftUpdate,
   type PrEligibleUser,
   type PrLineView,
+  type PrListItem,
+  type PrListQuery,
   type PrStepView,
 } from '@ngo/shared';
 import { withTenantTx, type TenantTx } from '../db/tx';
@@ -54,6 +58,7 @@ import {
 import {
   HEADER_FIELDS,
   LINE_FIELDS,
+  PrQueryRepository,
   PrRepository,
   type PrHeaderValues,
   type PrLineRecord,
@@ -287,6 +292,20 @@ export class PrService {
 
   private get actor(): PrActor {
     return this.deps.actor;
+  }
+
+  /** GET /prs — the PR list (FR-046); RLS limits it to the caller's offices and own PRs. */
+  list(query: PrListQuery): Promise<ListResponse<PrListItem>> {
+    return this.deps.run((_repos, tx) =>
+      new PrQueryRepository(tx.sql, this.actor.tenantId).list(query)
+    );
+  }
+
+  /** GET /prs/my-tasks — current steps the caller may sign (FR-047). */
+  myTasks(): Promise<MyTaskItem[]> {
+    return this.deps.run((_repos, tx) =>
+      new PrQueryRepository(tx.sql, this.actor.tenantId).myTasks(this.actor.userId)
+    );
   }
 
   /** POST /prs — header and lines may both be incomplete. */

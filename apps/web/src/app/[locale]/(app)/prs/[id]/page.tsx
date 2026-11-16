@@ -1,13 +1,14 @@
 'use client';
 
 // Read-only PR: header, lines with locked conversions, attachments, the approval route with its
-// signatures, the actions the caller may take, and printing.
+// signatures, the actions the caller may take, printing, and the history timeline (US8).
 import { Button } from '@ngo/ui';
 import { Pencil } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { ActionsPanel } from '@/features/pr/actions-panel';
 import { usePr } from '@/features/pr/api';
 import { AttachmentsPanel } from '@/features/pr/attachments-panel';
+import { HistoryTimeline } from '@/features/pr/history-timeline';
 import { PrHeaderView } from '@/features/pr/pr-header-view';
 import { ReturnedBanner } from '@/features/pr/returned-banner';
 import { PrLinesView } from '@/features/pr/pr-lines-view';
@@ -62,6 +63,7 @@ export default function PrDetailPage({ params }: { params: { id: string } }) {
       <PrLinesView pr={pr} />
       <PrStepsView pr={pr} />
       <AttachmentsPanel prId={pr.id} attachments={pr.attachments} editable={false} />
+      <HistoryTimeline prId={pr.id} />
     </div>
   );
 }

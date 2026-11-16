@@ -2,9 +2,22 @@
 // services need (tenant settings, grant, budget-line/activity grants, actor snapshot, print
 // labels). Every PR command and read runs inside withTenantTx, so RLS applies as the caller and
 // one transaction can lock the PR and its budget lines (research R4).
-import type { CurrencyNames, PrStatus, PrType } from '@ngo/shared';
+import {
+  STEP_KIND_PERMISSION,
+  type CurrencyNames,
+  type ListResponse,
+  type Money,
+  type MyTaskItem,
+  type PrListItem,
+  type PrListQuery,
+  type PrListSortField,
+  type PrStatus,
+  type PrType,
+  type StepKind,
+} from '@ngo/shared';
 import type { TxSql } from '../db/tx';
 import { AppError } from '../middleware/error';
+import { escapeLike } from './query-helpers';
 
 export interface PrHeaderValues {
   prDate: string | null;
@@ -743,3 +756,233 @@ export class PrRepository implements PrStore {
 }
 
 type postgresJson = Parameters<TxSql['json']>[0];
+
+// ---------------------------------------------------------------------------------------------
+// List and My tasks (US8, FR-046, FR-047): read-only queries over the caller's visible PRs. RLS
+// on purchase_requisition applies the office scope (office access, or the caller's own PRs).
+// ---------------------------------------------------------------------------------------------
+
+const LIST_SORT_COLUMN: Record<PrListSortField, string> = {
+  number: 'p.number',
+  prDate: 'p.pr_date',
+  status: 'p.status',
+  submittedAt: 'p.submitted_at',
+  createdAt: 'p.created_at',
+  updatedAt: 'p.updated_at',
+  totalGrantCurrency: 'p.total_grant_currency',
+};
+
+interface LabelDbRow {
+  id: string;
+  number: string | null;
+  status: PrStatus;
+  submitted_at: string | null;
+  created_at: string;
+  updated_at: string;
+  office: PrListItem['office'];
+  grant: PrListItem['grant'];
+  requester_id: string;
+  requester_name_ar: string | null;
+  requester_name_en: string | null;
+  total_grant_currency: string | null;
+}
+
+interface ListDbRow extends LabelDbRow {
+  pr_date: string | null;
+  totals: Money[];
+  total_count: string;
+}
+
+interface TaskDbRow extends LabelDbRow {
+  step_id: string;
+  step_kind: StepKind;
+  step_order: number;
+  waiting_since: string;
+  doa_amount: string | null;
+  doa_currency: string | null;
+}
+
+/** Columns shared by list items and tasks: office, grant and requester labels. */
+const LABEL_COLUMNS = `
+  p.id, p.number, p.status,
+  to_json(p.submitted_at)#>>'{}' as submitted_at, to_json(p.created_at)#>>'{}' as created_at,
+  to_json(p.updated_at)#>>'{}' as updated_at,
+  case when o.id is null then null else jsonb_build_object(
+    'id', o.id, 'code', o.code, 'nameAr', o.name_ar, 'nameEn', o.name_en) end as office,
+  case when g.id is null then null else jsonb_build_object(
+    'id', g.id, 'code', g.code, 'currency', g.currency) end as "grant",
+  p.requester_id, m.full_name_ar as requester_name_ar, m.full_name_en as requester_name_en,
+  p.total_grant_currency::text as total_grant_currency`;
+
+const LABEL_JOINS = `
+  left join public.office o on o.id = p.requesting_office_id
+  left join public."grant" g on g.id = p.grant_id
+  left join public.membership m on m.tenant_id = p.tenant_id and m.user_id = p.requester_id`;
+
+function requesterOf(r: LabelDbRow): PrListItem['requester'] {
+  return {
+    id: r.requester_id,
+    nameAr: r.requester_name_ar ?? '',
+    nameEn: r.requester_name_en ?? '',
+  };
+}
+
+function grantOf(r: LabelDbRow): PrListItem['grant'] {
+  return r.grant ? { ...r.grant, currency: r.grant.currency.trim() } : null;
+}
+
+function grantTotal(r: LabelDbRow): Money | null {
+  return r.total_grant_currency !== null && r.grant
+    ? { amount: r.total_grant_currency, currency: r.grant.currency.trim() }
+    : null;
+}
+
+export class PrQueryRepository {
+  constructor(
+    private readonly sql: TxSql,
+    private readonly tenantId: string
+  ) {}
+
+  /** GET /prs — filtered, sorted page of the PRs the caller may read. */
+  async list(query: PrListQuery): Promise<ListResponse<PrListItem>> {
+    const sql = this.sql;
+    const where = [sql`p.tenant_id = ${this.tenantId}`];
+    if (query.status?.length) where.push(sql`p.status in ${sql([...query.status])}`);
+    if (query.officeId) where.push(sql`p.requesting_office_id = ${query.officeId}`);
+    if (query.grantId) where.push(sql`p.grant_id = ${query.grantId}`);
+    if (query.requesterId) where.push(sql`p.requester_id = ${query.requesterId}`);
+    if (query.dateFrom) where.push(sql`p.pr_date >= ${query.dateFrom}::date`);
+    if (query.dateTo) where.push(sql`p.pr_date <= ${query.dateTo}::date`);
+    if (query.amountMin) where.push(sql`p.total_grant_currency >= ${query.amountMin}::numeric`);
+    if (query.amountMax) where.push(sql`p.total_grant_currency <= ${query.amountMax}::numeric`);
+    if (query.q) {
+      // trigram indexes on number and pr_line.description serve the ilike
+      const pattern = `%${escapeLike(query.q)}%`;
+      where.push(sql`(
+        p.number ilike ${pattern}
+        or exists (
+          select 1 from public.pr_line l where l.pr_id = p.id and l.description ilike ${pattern}
+        ))`);
+    }
+    const conditions = where.reduce((acc, c) => sql`${acc} and ${c}`);
+
+    const sort = query.sort ?? { field: 'createdAt', direction: 'desc' as const };
+    const column = LIST_SORT_COLUMN[sort.field as PrListSortField];
+    const direction = sort.direction === 'asc' ? sql`asc` : sql`desc`;
+    const offset = (query.page - 1) * query.pageSize;
+
+    const rows = await sql<ListDbRow[]>`
+      select ${sql.unsafe(LABEL_COLUMNS)}, p.pr_date::text as pr_date,
+             coalesce((
+               select jsonb_agg(jsonb_build_object('amount', t.amount::text, 'currency', t.currency)
+                                order by t.currency)
+               from (
+                 select l.currency::text as currency, sum(l.line_total) as amount
+                 from public.pr_line l
+                 where l.pr_id = p.id and l.line_total is not null
+                 group by l.currency
+               ) t
+             ), '[]'::jsonb) as totals,
+             count(*) over () as total_count
+      from public.purchase_requisition p ${sql.unsafe(LABEL_JOINS)}
+      where ${conditions}
+      order by ${sql.unsafe(column)} ${direction} nulls last, p.id
+      limit ${query.pageSize} offset ${offset}`;
+
+    let total = rows[0] ? Number(rows[0].total_count) : 0;
+    if (!rows[0] && offset > 0) {
+      // past the last page: the window count is not available
+      const [counted] = await sql<{ n: number }[]>`
+        select count(*)::int as n from public.purchase_requisition p where ${conditions}`;
+      total = counted?.n ?? 0;
+    }
+
+    return {
+      data: rows.map((r) => ({
+        id: r.id,
+        number: r.number,
+        status: r.status,
+        prDate: r.pr_date,
+        submittedAt: r.submitted_at,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+        office: r.office,
+        grant: grantOf(r),
+        requester: requesterOf(r),
+        totals: r.totals,
+        totalGrantCurrency: grantTotal(r),
+      })),
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+    };
+  }
+
+  /**
+   * GET /prs/my-tasks — current pending steps the user may sign now. Mirrors
+   * candidateIsEligible (approval-routing.service.ts): active member holding the step's role,
+   * the role grants the step kind's permission, office access, not the creator, the assignee
+   * when assigned, and no signature on another step (any cycle) or in this cycle.
+   */
+  async myTasks(userId: string): Promise<MyTaskItem[]> {
+    const sql = this.sql;
+    const kindPermission = sql`case s.kind
+      when 'finance_check' then ${STEP_KIND_PERMISSION.finance_check}
+      when 'approval' then ${STEP_KIND_PERMISSION.approval}
+      when 'final_approval' then ${STEP_KIND_PERMISSION.final_approval}
+    end`;
+    const rows = await sql<TaskDbRow[]>`
+      select ${sql.unsafe(LABEL_COLUMNS)},
+             s.id as step_id, s.kind as step_kind, s.step_order,
+             to_json(coalesce(
+               (select max(a.acted_at) from public.approval_action a
+                where a.pr_id = p.id and a.cycle = s.cycle and a.action in ('submit', 'approve')),
+               p.submitted_at, s.created_at))#>>'{}' as waiting_since,
+             p.doa_amount::text as doa_amount, p.doa_currency::text as doa_currency
+      from public.pr_approval_step s
+      join public.purchase_requisition p on p.id = s.pr_id ${sql.unsafe(LABEL_JOINS)}
+      where s.tenant_id = ${this.tenantId}
+        and s.status = 'pending'
+        and p.status in ('pending_finance_check', 'pending_approval')
+        and s.cycle = p.submission_cycle
+        and s.step_order = p.current_step_order
+        and p.requester_id <> ${userId}
+        and (s.assigned_user_id is null or s.assigned_user_id = ${userId})
+        and exists (
+          select 1
+          from public.membership me
+          join public.user_role ur on ur.membership_id = me.id and ur.role_id = s.required_role_id
+          join public.role_permission rp
+            on rp.role_id = ur.role_id
+           and rp.permission_code = (${kindPermission})
+          where me.tenant_id = p.tenant_id and me.user_id = ${userId} and me.status = 'active'
+            and (me.org_wide_access or exists (
+              select 1 from public.user_office uo
+              where uo.membership_id = me.id and uo.office_id = p.requesting_office_id))
+        )
+        and not exists (
+          select 1 from public.approval_action a
+          where a.pr_id = p.id and a.user_id = ${userId} and a.action = 'approve'
+            and (a.step_order is distinct from s.step_order or a.cycle = s.cycle)
+        )
+      order by waiting_since, p.number`;
+
+    return rows.map((r) => ({
+      prId: r.id,
+      number: r.number,
+      status: r.status,
+      stepId: r.step_id,
+      stepKind: r.step_kind,
+      stepOrder: r.step_order,
+      waitingSince: r.waiting_since,
+      office: r.office,
+      grant: grantOf(r),
+      requester: requesterOf(r),
+      totalGrantCurrency: grantTotal(r),
+      doaAmount:
+        r.doa_amount !== null && r.doa_currency
+          ? { amount: r.doa_amount, currency: r.doa_currency.trim() }
+          : null,
+    }));
+  }
+}
