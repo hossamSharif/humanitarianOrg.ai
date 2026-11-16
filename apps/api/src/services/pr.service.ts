@@ -8,6 +8,7 @@ import {
   MAX_ATTACHMENTS_PER_PR,
   MAX_ATTACHMENT_BYTES,
   PERMISSIONS,
+  canTransition,
   isEditableByRequester,
   isPending,
   parseAmount,
@@ -128,6 +129,16 @@ export function assertCreator(pr: PrRecord, actor: PrActor): void {
   if (pr.requesterId !== actor.userId) {
     throw new AppError('FORBIDDEN', 'Only the requester can change this purchase requisition');
   }
+}
+
+/**
+ * Who may cancel (FR-041, FR-042): a holder of pr:cancel_approved any cancellable PR, the creator
+ * their own PR before approval.
+ */
+export function mayCancel(pr: PrRecord, actor: PrActor): boolean {
+  if (!canTransition(pr.status, 'cancel')) return false;
+  if (actor.permissions.has(PERMISSIONS.PR_CANCEL_APPROVED)) return true;
+  return pr.status !== 'approved' && pr.requesterId === actor.userId;
 }
 
 export function assertEditable(pr: PrRecord): void {
@@ -472,7 +483,7 @@ export class PrService {
     });
   }
 
-  /** The requester's actions, then the step actions of the current step and reassignment. */
+  /** The requester's actions, the step actions of the current step, reassignment and cancel. */
   availableActions(pr: PrRecord, steps: readonly PrStepView[] = []): PrAction[] {
     const actions: PrAction[] = [];
     if (pr.requesterId === this.actor.userId && isEditableByRequester(pr.status)) {
@@ -487,6 +498,7 @@ export class PrService {
     if (isPending(pr.status) && this.actor.permissions.has(PERMISSIONS.PR_REASSIGN)) {
       actions.push('reassign');
     }
+    if (mayCancel(pr, this.actor)) actions.push('cancel');
     return actions;
   }
 

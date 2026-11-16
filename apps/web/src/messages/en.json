@@ -717,6 +717,14 @@
     "frozen": {
       "title": "Grant suspended or closed",
       "body": "This PR cannot be approved while its grant is not active. It can still be returned, rejected or cancelled."
+    },
+    "cancel": {
+      "open": "Cancel PR",
+      "title": "Cancel the purchase requisition",
+      "intro": "The PR stays on record as Cancelled and its number is never reused. Any budget it holds is released.",
+      "confirm": "Cancel PR",
+      "approvedWarning": "This PR is already approved. Cancelling it releases its committed amount back to the budget line.",
+      "othersWarning": "This PR belongs to another user. They will be notified that you cancelled it."
     }
   }
 }

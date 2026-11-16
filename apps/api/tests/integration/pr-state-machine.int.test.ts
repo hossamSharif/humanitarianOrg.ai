@@ -144,7 +144,7 @@ describe.runIf(integrationEnabled)('PR state machine (US5)', { timeout: 180_000 
       returnReason: 'Attach quotation',
       number,
     });
-    expect(returned.availableActions).toEqual(['update', 'submit']);
+    expect(returned.availableActions).toEqual(['update', 'submit', 'cancel']);
     const save = await as(flow.requester.token).patch(`/prs/${id}`, {
       expectedVersion: returned.version,
       header: {

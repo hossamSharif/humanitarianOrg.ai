@@ -317,6 +317,11 @@ export class BudgetService {
     const open = (await this.deps.txStore.listCommitments(tx, prId)).filter(
       (c) => c.status !== 'released'
     );
+    // the lines' balances change: lock them in ascending order like every other command
+    await this.deps.txStore.lockLines(
+      tx,
+      open.map((c) => c.budgetLineId)
+    );
     const rows: CommitmentRow[] = [];
     for (const c of open) {
       rows.push(

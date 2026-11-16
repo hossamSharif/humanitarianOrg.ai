@@ -8,11 +8,13 @@ import {
   PERMISSIONS,
   addDays,
   calendarDateInTimeZone,
+  canTransition,
   convertLine,
   isPending,
   parseAmount,
   type PrActionResult,
   type PrApprove,
+  type PrCancel,
   type PrChangeBudgetLine,
   type PrReasonAction,
   type PrReassign,
@@ -40,6 +42,7 @@ import {
   assertGrantLinks,
   assertVersion,
   getPr,
+  mayCancel,
   prRepos,
   type PrActor,
   type PrRepos,
@@ -601,6 +604,79 @@ export class PrWorkflowService {
       });
       await repos.notifications.notifyReassigned(prRef(pr), step, input.userId, admin.nameEn);
       return { id, status: pr.status, version, currentStepOrder: pr.currentStepOrder };
+    });
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Cancel (US6)
+  // -------------------------------------------------------------------------------------------
+
+  /**
+   * POST /prs/:id/cancel — the creator cancels a pending or returned PR; a holder of
+   * pr:cancel_approved cancels any pending, returned or approved one. Every open hold is
+   * released as `cancelled`, open steps close, the number stays used and the requester is told
+   * when someone else cancelled (US6-1, US6-2, FR-041, FR-042).
+   */
+  cancel(id: string, input: PrCancel): Promise<PrActionResult> {
+    const { actor, budget } = this.deps;
+    return this.deps.run(async (repos, tx) => {
+      const reason = input.reason?.trim() ?? '';
+      if (!reason) {
+        throw new AppError('VALIDATION_ERROR', 'A reason is required', [
+          { field: 'reason', message: 'required' },
+        ]);
+      }
+      const { prs, steps } = repos;
+      const pr = await getPr(prs, id, { lock: true });
+      assertVersion(pr, input.expectedVersion);
+      if (!canTransition(pr.status, 'cancel')) {
+        throw new AppError(
+          'INVALID_STATE',
+          `A ${pr.status} purchase requisition cannot be cancelled`
+        );
+      }
+      if (!mayCancel(pr, actor)) {
+        throw new AppError(
+          'FORBIDDEN',
+          pr.status === 'approved'
+            ? 'Missing permission pr:cancel_approved'
+            : 'Only the requester can cancel this purchase requisition'
+        );
+      }
+
+      const canceller = await prs.actor(actor.userId);
+      const now = this.now().toISOString();
+      await tx.setAuditComment(reason);
+      await repos.actions.insert({
+        prId: id,
+        stepId: null,
+        cycle: pr.submissionCycle,
+        stepOrder: null,
+        action: 'cancel',
+        userName: canceller.nameEn,
+        userPosition: canceller.position,
+        comment: reason,
+        payload: { nameAr: canceller.nameAr, fromStatus: pr.status },
+      });
+      for (const step of await steps.list(id, pr.submissionCycle)) {
+        if (step.status === 'pending') {
+          await steps.update(step.id, { status: 'cancelled', actedAt: now });
+        }
+      }
+      await steps.cancelWaiting(id, pr.submissionCycle);
+      await budget.release(tx, id, 'cancelled');
+
+      const version = await prs.updateStatus(id, {
+        status: 'cancelled',
+        currentStepOrder: null,
+        cancelReason: reason,
+        cancelledBy: actor.userId,
+        closedAt: now,
+      });
+      if (pr.requesterId !== actor.userId) {
+        await repos.notifications.notifyRequester(prRef(pr), 'pr_cancelled', canceller.nameEn);
+      }
+      return { id, status: 'cancelled', version, currentStepOrder: null };
     });
   }
 

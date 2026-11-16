@@ -2,8 +2,9 @@
 
 // Step actions on the PR detail page (US5): sign the current step (the confirmation shows the
 // name and position that will be stored with the signature), reject or return with a reason,
-// change a line's budget line during the finance check, and reassign a step. Only the actions in
-// `availableActions` are rendered; a frozen grant shows a banner and hides Approve (FR-022).
+// change a line's budget line during the finance check, reassign a step, and cancel the PR (US6).
+// Only the actions in `availableActions` are rendered; a frozen grant shows a banner and hides
+// Approve (FR-022).
 import type { PrDetail } from '@ngo/shared';
 import {
   Button,
@@ -22,6 +23,7 @@ import { useState } from 'react';
 import { useApiError } from '@/lib/use-api-error';
 import { useMe } from '@/lib/use-me';
 import { useApprovePr, useRejectPr, useReturnPr } from './api';
+import { CancelPrButton } from './cancel-pr-button';
 import { ChangeBudgetLineDialog } from './change-budget-line-dialog';
 import { ReasonDialog } from './reason-dialog';
 import { ReassignStepDialog } from './reassign-step-dialog';
@@ -44,12 +46,8 @@ export function ActionsPanel({ pr }: { pr: PrDetail }) {
 
   const step = pr.steps.find((s) => s.status === 'pending' && s.stepOrder === pr.currentStepOrder);
   const can = (a: PrDetail['availableActions'][number]) => pr.availableActions.includes(a);
-  const anyAction =
-    can('approve') ||
-    can('reject') ||
-    can('return') ||
-    can('change_budget_line') ||
-    can('reassign');
+  const stepAction = can('approve') || can('reject') || can('return');
+  const anyAction = stepAction || can('change_budget_line') || can('reassign') || can('cancel');
 
   if (!anyAction && !pr.grantFrozen) return null;
 
@@ -90,7 +88,7 @@ export function ActionsPanel({ pr }: { pr: PrDetail }) {
   return (
     <section aria-labelledby="pr-actions" className="space-y-3 rounded-lg border bg-card p-4">
       <h2 id="pr-actions" className="text-lg font-semibold">
-        {step ? t('titleStep', { step: tk(step.kind) }) : t('title')}
+        {step && stepAction ? t('titleStep', { step: tk(step.kind) }) : t('title')}
       </h2>
 
       {pr.grantFrozen ? (
@@ -134,6 +132,7 @@ export function ActionsPanel({ pr }: { pr: PrDetail }) {
             {t('reassign.open')}
           </Button>
         ) : null}
+        <CancelPrButton pr={pr} />
       </div>
 
       <Dialog open={open === 'approve'} onOpenChange={close}>

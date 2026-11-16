@@ -213,7 +213,7 @@ describe.runIf(integrationEnabled)('PR drafts and submit (US4)', () => {
       totalGrantCurrency: '1534.51',
       grantRateToBase: '600.000000',
       requesterName: 'Test User',
-      availableActions: [],
+      availableActions: ['cancel'],
     });
     expect(detail.body.lines.map((l: { amountGrant: string }) => l.amountGrant)).toEqual([
       '1451.18',

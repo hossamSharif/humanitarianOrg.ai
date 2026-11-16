@@ -2,7 +2,7 @@
 
 // Data hooks for purchase requisitions (contracts/rest-api.md "Purchase requisitions"): the
 // detail read model, draft create / autosave / delete, submit, the step actions (approve, reject,
-// return, change budget line, reassign) and attachments through Storage signed URLs.
+// return, change budget line, reassign), cancel and attachments through Storage signed URLs.
 import type {
   Activity,
   AttachmentUpload,
@@ -14,6 +14,7 @@ import type {
   PrActionResult,
   PrApprove,
   PrAttachmentView,
+  PrCancel,
   PrChangeBudgetLine,
   PrCreate,
   PrCreated,
@@ -119,6 +120,14 @@ export function useReassignStep(id: string) {
   return useStepAction<PrReassign & { stepId: string }>(
     (v) => `/prs/${id}/steps/${v.stepId}/reassign`,
     ({ stepId: _stepId, ...body }) => body
+  );
+}
+
+/** Cancel (US6): the creator before approval, or a holder of pr:cancel_approved. */
+export function useCancelPr(id: string) {
+  return useStepAction<PrCancel>(
+    () => `/prs/${id}/cancel`,
+    (v) => v
   );
 }
 

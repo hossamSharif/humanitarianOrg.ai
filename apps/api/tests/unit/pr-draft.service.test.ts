@@ -305,7 +305,11 @@ describe('PR drafts', () => {
       expect(
         (await w.prService({ userId: w.financeUserId }).getDetail(pr.id)).availableActions
       ).toEqual([]);
-      expect((await w.prService().getDetail(pr.id)).availableActions).toEqual(['update', 'submit']);
+      expect((await w.prService().getDetail(pr.id)).availableActions).toEqual([
+        'update',
+        'submit',
+        'cancel',
+      ]);
     });
 
     it('flags the pending step the caller is eligible for', async () => {
@@ -320,7 +324,8 @@ describe('PR drafts', () => {
       ]);
       const requester = await w.prService().getDetail(pr.id);
       expect(requester.steps.every((s) => !s.canApprove)).toBe(true);
-      expect(requester.availableActions).toEqual([]);
+      // only cancelling their own pending PR (US6)
+      expect(requester.availableActions).toEqual(['cancel']);
       expect(requester.reservations).toEqual([
         {
           budgetLineId: w.budgetLineId,

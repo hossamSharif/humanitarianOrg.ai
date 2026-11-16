@@ -4,6 +4,7 @@ import {
   idParam,
   prApprove,
   prAttachmentParams,
+  prCancel,
   prChangeBudgetLine,
   prCreate,
   prDraftUpdate,
@@ -14,6 +15,7 @@ import {
   prSubmit,
   type AttachmentUpload,
   type PrApprove,
+  type PrCancel,
   type PrChangeBudgetLine,
   type PrCreate,
   type PrDraftUpdate,
@@ -33,7 +35,8 @@ import { handle, type ServiceFactory } from './route-helpers';
  * submitting need pr:create; draft edits, deletes and attachments are the requester's own
  * (checked by the service). Step actions (approve, reject, return, change budget line) need
  * eligibility for the current step, which the workflow service decides; reassigning needs
- * pr:reassign.
+ * pr:reassign. Cancelling is the creator's before approval, or needs pr:cancel_approved
+ * (decided by the workflow service per status).
  */
 export function prsRouter(
   service: ServiceFactory<PrService> = PrService.forContext,
@@ -145,6 +148,16 @@ export function prsRouter(
       res.json(
         await workflow(ctx).reassign(req.params.id!, req.params.stepId!, req.body as PrReassign)
       );
+    })
+  );
+
+  // --- cancel (US6) ---------------------------------------------------------------------------
+
+  router.post(
+    '/prs/:id/cancel',
+    validate({ params: idParam, body: prCancel }),
+    handle(async (req, res, ctx) => {
+      res.json(await workflow(ctx).cancel(req.params.id!, req.body as PrCancel));
     })
   );
 

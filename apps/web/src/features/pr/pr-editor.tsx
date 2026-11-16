@@ -2,7 +2,7 @@
 
 // Edit screen of a draft or returned PR: the form with autosave, attachments, submit and (for a
 // never-submitted draft) delete. A returned PR shows the return reason and keeps its number; its
-// resubmission starts a new approval cycle (FR-038).
+// resubmission starts a new approval cycle (FR-038), or the requester cancels it (US6).
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { PrDetail } from '@ngo/shared';
 import {
@@ -22,6 +22,7 @@ import { useRouter } from '@/i18n/routing';
 import { useApiError } from '@/lib/use-api-error';
 import { useDeletePr } from './api';
 import { AttachmentsPanel } from './attachments-panel';
+import { CancelPrButton } from './cancel-pr-button';
 import { fromDetail, prSubmitFormSchema, type PrFormValues } from './form-model';
 import { PrForm } from './pr-form';
 import { PrStatusBadge } from './pr-status-badge';
@@ -132,7 +133,15 @@ export function PrEditor({
       <PrForm form={form} baseCurrency={baseCurrency} shortfalls={shortfalls} />
       <AttachmentsPanel prId={pr.id} attachments={pr.attachments} editable />
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        <CancelPrButton
+          pr={pr}
+          prepare={() => autosave.flush()}
+          onCancelled={() => {
+            autosave.discard();
+            router.replace(`/prs/${pr.id}`);
+          }}
+        />
         <SubmitButton
           prId={pr.id}
           form={form}
