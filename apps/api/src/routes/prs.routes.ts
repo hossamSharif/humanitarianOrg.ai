@@ -9,6 +9,7 @@ import {
   prCreate,
   prDraftUpdate,
   prLineParams,
+  prPrintQuery,
   prReasonAction,
   prReassign,
   prStepParams,
@@ -19,6 +20,7 @@ import {
   type PrChangeBudgetLine,
   type PrCreate,
   type PrDraftUpdate,
+  type PrPrintQuery,
   type PrReasonAction,
   type PrReassign,
   type PrSubmit,
@@ -26,6 +28,7 @@ import {
 import { Router } from 'express';
 import { requirePermission } from '../middleware/permission';
 import { validate } from '../middleware/validate';
+import { PrPrintService } from '../services/pr-print.service';
 import { PrWorkflowService } from '../services/pr-workflow.service';
 import { PrService } from '../services/pr.service';
 import { handle, type ServiceFactory } from './route-helpers';
@@ -40,7 +43,8 @@ import { handle, type ServiceFactory } from './route-helpers';
  */
 export function prsRouter(
   service: ServiceFactory<PrService> = PrService.forContext,
-  workflow: ServiceFactory<PrWorkflowService> = PrWorkflowService.forContext
+  workflow: ServiceFactory<PrWorkflowService> = PrWorkflowService.forContext,
+  print: ServiceFactory<PrPrintService> = PrPrintService.forContext
 ): Router {
   const router = Router();
   const read = requirePermission(PERMISSIONS.PR_READ);
@@ -62,6 +66,18 @@ export function prsRouter(
     validate({ params: idParam }),
     handle(async (req, res, ctx) => {
       res.json(await service(ctx).getDetail(req.params.id!));
+    })
+  );
+
+  // --- print (US7) ---------------------------------------------------------------------------
+
+  router.get(
+    '/prs/:id/print',
+    read,
+    validate({ params: idParam, query: prPrintQuery }),
+    handle(async (req, res, ctx) => {
+      const { locale } = req.query as unknown as PrPrintQuery;
+      res.json(await print(ctx).printData(req.params.id!, locale));
     })
   );
 

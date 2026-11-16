@@ -725,6 +725,60 @@
       "confirm": "Cancel PR",
       "approvedWarning": "This PR is already approved. Cancelling it releases its committed amount back to the budget line.",
       "othersWarning": "This PR belongs to another user. They will be notified that you cancelled it."
+    },
+    "print": {
+      "button": "Print",
+      "chooseLanguage": "Print in",
+      "arabic": "Arabic (العربية)",
+      "english": "English",
+      "generating": "Preparing the PDF…",
+      "error": "Could not prepare the PDF. Try again.",
+      "pdf": {
+        "title": "طلب شراء / Purchase Requisition",
+        "titleAr": "طلب شراء",
+        "titleEn": "Purchase Requisition",
+        "unnumbered": "Not yet numbered",
+        "prDate": "PR date",
+        "requiredBy": "Required by",
+        "requestingOffice": "Requesting office",
+        "grant": "Project / grant",
+        "donor": "Donor",
+        "deliverTo": "Deliver to",
+        "deliveryAddress": "Delivery address",
+        "contact": "Contact",
+        "activity": "Activity",
+        "prType": "Type",
+        "purpose": "Purpose / comments",
+        "columns": {
+          "no": "No.",
+          "description": "Description",
+          "quantity": "Qty",
+          "unit": "Unit",
+          "unitCost": "Unit cost",
+          "total": "Total",
+          "donor": "Donor",
+          "location": "Budget location",
+          "budgetLine": "Donor budget line"
+        },
+        "total": "Total ({currency})",
+        "grantTotal": "Grant-currency equivalent",
+        "rate": "1 {currency} = {rate} (base) on {date}, {source}",
+        "requestedBy": "Requested By",
+        "financeCheck": "Finance Check",
+        "finalApproval": "Final Approval",
+        "name": "Name",
+        "position": "Position",
+        "date": "Date",
+        "signature": "Signature",
+        "printedAt": "Printed {date}",
+        "page": "Page {page} / {pages}",
+        "watermark": {
+          "DRAFT": "DRAFT",
+          "PENDING": "PENDING",
+          "REJECTED": "REJECTED",
+          "CANCELLED": "CANCELLED"
+        }
+      }
     }
   }
 }

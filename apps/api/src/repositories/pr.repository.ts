@@ -2,7 +2,7 @@
 // services need (tenant settings, grant, budget-line/activity grants, actor snapshot, print
 // labels). Every PR command and read runs inside withTenantTx, so RLS applies as the caller and
 // one transaction can lock the PR and its budget lines (research R4).
-import type { PrStatus, PrType } from '@ngo/shared';
+import type { CurrencyNames, PrStatus, PrType } from '@ngo/shared';
 import type { TxSql } from '../db/tx';
 import { AppError } from '../middleware/error';
 
@@ -239,7 +239,12 @@ export interface PrStore {
   /** ISO code → minor units */
   minorUnits(codes: readonly string[]): Promise<Map<string, number>>;
   actor(userId: string): Promise<ActorSnapshot>;
+  /** Live labels (drafts print these; submission freezes them). */
   printSnapshot(prId: string): Promise<PrintSnapshot>;
+  /** The labels frozen at the last submission; null while never submitted. */
+  storedPrintSnapshot(prId: string): Promise<PrintSnapshot | null>;
+  /** Names for amount-in-words of the given ISO codes (global `currency` table). */
+  currencyNames(codes: readonly string[]): Promise<Map<string, CurrencyNames>>;
 
   lockLine(id: string, values: LockedLineValues): Promise<void>;
   markSubmitted(id: string, values: SubmissionValues): Promise<number>;
@@ -658,6 +663,27 @@ export class PrRepository implements PrStore {
       from public.purchase_requisition p where p.id = ${prId}`;
     if (!row) throw new AppError('NOT_FOUND', 'purchase_requisition not found');
     return row.snapshot;
+  }
+
+  async storedPrintSnapshot(prId: string): Promise<PrintSnapshot | null> {
+    const [row] = await this.sql<{ print_snapshot: PrintSnapshot | null }[]>`
+      select print_snapshot from public.purchase_requisition where id = ${prId}`;
+    if (!row) throw new AppError('NOT_FOUND', 'purchase_requisition not found');
+    return row.print_snapshot;
+  }
+
+  async currencyNames(codes: readonly string[]): Promise<Map<string, CurrencyNames>> {
+    if (codes.length === 0) return new Map();
+    const rows = await this.sql<CurrencyNames[]>`
+      select code::text as "code", minor_units as "minorUnits",
+             name_ar_singular as "nameArSingular", name_ar_dual as "nameArDual",
+             name_ar_plural as "nameArPlural", name_en_singular as "nameEnSingular",
+             name_en_plural as "nameEnPlural", minor_name_ar_singular as "minorNameArSingular",
+             minor_name_ar_dual as "minorNameArDual", minor_name_ar_plural as "minorNameArPlural",
+             minor_name_en_singular as "minorNameEnSingular",
+             minor_name_en_plural as "minorNameEnPlural"
+      from public.currency where code in ${this.sql([...new Set(codes)])}`;
+    return new Map(rows.map((r) => [r.code, { ...r }]));
   }
 
   async lockLine(id: string, values: LockedLineValues): Promise<void> {

@@ -21,3 +21,5 @@ export * from './schemas/role';
 export * from './schemas/approval-rule';
 export * from './schemas/pr';
 export * from './schemas/pr-actions';
+export * from './schemas/print';
+export * from './amount-in-words';

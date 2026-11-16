@@ -211,6 +211,23 @@ with the changes listed in `docs/plan001.md`.
 - **Rationale**: Plan input mandates react-pdf; Arabic shaping works through fontkit but mixed
   bidi runs are the known weak point, so the risk is retired early.
 - **Alternatives considered**: Puppeteer from day one (heavier Fly image, server CPU cost).
+- **Spike result (T136, 2026-11-16)**: `apps/web/src/features/pr/print/spike.tsx` rendered in
+  Node with IBM Plex Sans Arabic, compared line by line with the same strings rendered by Chrome
+  (`dir="rtl"`) as the bidi reference.
+  - **@react-pdf/renderer 3.4.5: FAIL.** Shaping, standalone codes/amounts in their own cells
+    and `row-reverse` tables were correct, but mixed paragraphs were misordered: the base
+    direction comes from the first strong character (`Hygiene kit — طقم نظافة شخصية` laid out
+    LTR), a trailing period stuck to `ADRA` on the wrong side, and `870,710.00` was split from
+    `SDG`. Screenshot: `screenshots/r13-spike-react-pdf-3.4.5-fail.png`.
+  - **@react-pdf/renderer 4.9.0: PASS** with `direction: 'rtl'` on every `Text`. All mixed
+    lines match `screenshots/r13-chrome-bidi-reference.png`; see
+    `screenshots/r13-spike-react-pdf-4.9.0-pass.png`. Without the style, 4.9.0 behaves like
+    3.4.5.
+  - Findings that shape the templates: `direction` is **not inherited** from `Page` or `View`,
+    so each `Text` carries it, and it does **not mirror flex rows**, so the Arabic template uses
+    `flexDirection: 'row-reverse'`.
+  - **Outcome**: `apps/web` upgraded to `@react-pdf/renderer@^4.9.0` (React 18 compatible). The
+    Playwright HTML→PDF fallback is not needed.
 
 ## R14. Amount in words
 

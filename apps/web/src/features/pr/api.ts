@@ -2,7 +2,8 @@
 
 // Data hooks for purchase requisitions (contracts/rest-api.md "Purchase requisitions"): the
 // detail read model, draft create / autosave / delete, submit, the step actions (approve, reject,
-// return, change budget line, reassign), cancel and attachments through Storage signed URLs.
+// return, change budget line, reassign), cancel, attachments through Storage signed URLs and the
+// print data.
 import type {
   Activity,
   AttachmentUpload,
@@ -22,9 +23,11 @@ import type {
   PrDraftSaved,
   PrDraftUpdate,
   PrEligibleUser,
+  PrPrintData,
   PrReasonAction,
   PrReassign,
   PrSubmitResult,
+  PrintLocale,
 } from '@ngo/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
@@ -219,4 +222,9 @@ export function useRemoveAttachment(prId: string) {
 
 export async function attachmentDownloadUrl(prId: string, attachmentId: string): Promise<string> {
   return (await api.get<{ url: string }>(`/prs/${prId}/attachments/${attachmentId}/url`)).url;
+}
+
+/** GET /prs/:id/print — PrPrintData with labels in `locale` (US7). */
+export function prPrintData(prId: string, locale: PrintLocale): Promise<PrPrintData> {
+  return api.get<PrPrintData>(`/prs/${prId}/print`, { query: { locale } });
 }

@@ -725,6 +725,60 @@
       "confirm": "إلغاء الطلب",
       "approvedWarning": "هذا الطلب معتمد بالفعل. إلغاؤه يعيد المبلغ الملتزم به إلى بند الميزانية.",
       "othersWarning": "هذا الطلب يخص مستخدمًا آخر، وسيُبلَّغ بأنك ألغيته."
+    },
+    "print": {
+      "button": "طباعة",
+      "chooseLanguage": "الطباعة باللغة",
+      "arabic": "العربية",
+      "english": "الإنجليزية (English)",
+      "generating": "جارٍ إعداد ملف PDF…",
+      "error": "تعذّر إعداد ملف PDF. حاول مرة أخرى.",
+      "pdf": {
+        "title": "طلب شراء / Purchase Requisition",
+        "titleAr": "طلب شراء",
+        "titleEn": "Purchase Requisition",
+        "unnumbered": "لم يُرقَّم بعد",
+        "prDate": "تاريخ الطلب",
+        "requiredBy": "مطلوب بتاريخ",
+        "requestingOffice": "المكتب الطالب",
+        "grant": "المشروع / المنحة",
+        "donor": "المانح",
+        "deliverTo": "التسليم إلى",
+        "deliveryAddress": "عنوان التسليم",
+        "contact": "جهة الاتصال",
+        "activity": "النشاط",
+        "prType": "النوع",
+        "purpose": "الغرض / ملاحظات",
+        "columns": {
+          "no": "م",
+          "description": "الوصف",
+          "quantity": "الكمية",
+          "unit": "الوحدة",
+          "unitCost": "سعر الوحدة",
+          "total": "الإجمالي",
+          "donor": "المانح",
+          "location": "موقع الميزانية",
+          "budgetLine": "بند ميزانية المانح"
+        },
+        "total": "الإجمالي ({currency})",
+        "grantTotal": "المعادل بعملة المنحة",
+        "rate": "1 {currency} = {rate} (عملة الأساس) بتاريخ {date}، {source}",
+        "requestedBy": "مقدم الطلب",
+        "financeCheck": "التدقيق المالي",
+        "finalApproval": "الاعتماد النهائي",
+        "name": "الاسم",
+        "position": "الوظيفة",
+        "date": "التاريخ",
+        "signature": "التوقيع",
+        "printedAt": "طُبع في {date}",
+        "page": "صفحة {page} / {pages}",
+        "watermark": {
+          "DRAFT": "مسودة",
+          "PENDING": "قيد الاعتماد",
+          "REJECTED": "مرفوض",
+          "CANCELLED": "ملغى"
+        }
+      }
     }
   }
 }

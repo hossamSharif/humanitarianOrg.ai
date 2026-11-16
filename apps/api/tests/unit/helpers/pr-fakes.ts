@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto';
 import {
   Decimal,
   SEEDED_ROLES,
+  type CurrencyNames,
   type Permission,
   type PrActionView,
   type PrReservation,
@@ -73,6 +74,36 @@ import { InMemoryRoutingStore, buildCandidate, buildRole, toRuleLike } from './r
 
 const clone = <T>(v: T): T => structuredClone(v);
 
+/** rows of migration 0008_seed_reference.sql */
+export const SDG_NAMES: CurrencyNames = {
+  code: 'SDG',
+  minorUnits: 2,
+  nameArSingular: 'جنيه سوداني',
+  nameArDual: 'جنيهان سودانيان',
+  nameArPlural: 'جنيهات سودانية',
+  nameEnSingular: 'Sudanese Pound',
+  nameEnPlural: 'Sudanese Pounds',
+  minorNameArSingular: 'قرش',
+  minorNameArDual: 'قرشان',
+  minorNameArPlural: 'قروش',
+  minorNameEnSingular: 'Piastre',
+  minorNameEnPlural: 'Piastres',
+};
+export const USD_NAMES: CurrencyNames = {
+  code: 'USD',
+  minorUnits: 2,
+  nameArSingular: 'دولار أمريكي',
+  nameArDual: 'دولاران أمريكيان',
+  nameArPlural: 'دولارات أمريكية',
+  nameEnSingular: 'US Dollar',
+  nameEnPlural: 'US Dollars',
+  minorNameArSingular: 'سنت',
+  minorNameArDual: 'سنتان',
+  minorNameArPlural: 'سنتات',
+  minorNameEnSingular: 'Cent',
+  minorNameEnPlural: 'Cents',
+};
+
 function lineTotal(quantity: string | null, unitCost: string | null): string | null {
   if (quantity === null || unitCost === null) return null;
   return new Decimal(quantity).times(unitCost).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
@@ -85,7 +116,13 @@ function lineTotal(quantity: string | null, unitCost: string | null): string | n
 export class FakePrStore implements PrStore {
   readonly prs = new Map<string, PrRecord>();
   readonly lineRows = new Map<string, PrLineRecord[]>();
+  /** live labels per PR (what printSnapshot returns; a submit freezes a copy) */
   readonly snapshots = new Map<string, PrintSnapshot>();
+  /** print_snapshot column: written by markSubmitted */
+  readonly frozen = new Map<string, PrintSnapshot>();
+  readonly currencies = new Map<string, CurrencyNames>(
+    [SDG_NAMES, USD_NAMES].map((c) => [c.code, c])
+  );
   settingsValue: TenantSettings = {
     baseCurrency: 'SDG',
     doaReferenceCurrency: 'USD',
@@ -271,6 +308,21 @@ export class FakePrStore implements PrStore {
     );
   }
 
+  async storedPrintSnapshot(prId: string) {
+    if (!this.prs.has(prId)) throw new AppError('NOT_FOUND', 'purchase_requisition not found');
+    const frozen = this.frozen.get(prId);
+    return frozen ? clone(frozen) : null;
+  }
+
+  async currencyNames(codes: readonly string[]) {
+    return new Map(
+      codes.flatMap((c) => (this.currencies.has(c) ? [[c, this.currencies.get(c)!]] : [])) as [
+        string,
+        CurrencyNames,
+      ][]
+    );
+  }
+
   async lockLine(id: string, values: LockedLineValues) {
     this.writes++;
     Object.assign(this.findLine(id), values);
@@ -278,6 +330,7 @@ export class FakePrStore implements PrStore {
 
   async markSubmitted(id: string, values: SubmissionValues) {
     this.submitted = clone(values);
+    this.frozen.set(id, clone(values.printSnapshot));
     const {
       printSnapshot: _snapshot,
       doaExchangeRateId: _d,

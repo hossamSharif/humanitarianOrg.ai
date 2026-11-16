@@ -1,7 +1,7 @@
 'use client';
 
 // Read-only PR: header, lines with locked conversions, attachments, the approval route with its
-// signatures, and the actions the caller may take.
+// signatures, the actions the caller may take, and printing.
 import { Button } from '@ngo/ui';
 import { Pencil } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -13,6 +13,7 @@ import { ReturnedBanner } from '@/features/pr/returned-banner';
 import { PrLinesView } from '@/features/pr/pr-lines-view';
 import { PrStatusBadge } from '@/features/pr/pr-status-badge';
 import { PrStepsView } from '@/features/pr/pr-steps-view';
+import { PrintButton } from '@/features/pr/print/print-button';
 import { Link } from '@/i18n/routing';
 import { useApiError } from '@/lib/use-api-error';
 
@@ -41,14 +42,17 @@ export default function PrDetailPage({ params }: { params: { id: string } }) {
           </h1>
           <PrStatusBadge status={pr.status} />
         </div>
-        {pr.availableActions.includes('update') ? (
-          <Button asChild>
-            <Link href={`/prs/${pr.id}/edit`}>
-              <Pencil className="me-2 h-4 w-4" aria-hidden />
-              {t('edit')}
-            </Link>
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <PrintButton prId={pr.id} />
+          {pr.availableActions.includes('update') ? (
+            <Button asChild>
+              <Link href={`/prs/${pr.id}/edit`}>
+                <Pencil className="me-2 h-4 w-4" aria-hidden />
+                {t('edit')}
+              </Link>
+            </Button>
+          ) : null}
+        </div>
       </div>
       {pr.status === 'returned' && pr.returnReason ? (
         <ReturnedBanner reason={pr.returnReason} />
