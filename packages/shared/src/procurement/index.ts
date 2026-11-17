@@ -2,3 +2,5 @@
 // advance recovery and retention. Pure and decimal.js-based; filled in by the story phases.
 export * from './method';
 export * from './scoring';
+export * from './match';
+export * from './advance-retention';

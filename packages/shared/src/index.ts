@@ -35,6 +35,8 @@ export * from './schemas/sourcing';
 export * from './schemas/analysis';
 export * from './schemas/order';
 export * from './schemas/receipt';
+export * from './schemas/invoice';
+export * from './schemas/payment';
 export * from './doc-types';
 export * from './procurement';
 export * from './accounting';

@@ -21,10 +21,13 @@ import { rfqsRouter } from './rfqs.routes';
 import { bidAnalysesRouter } from './bid-analyses.routes';
 import { posRouter } from './pos.routes';
 import { grnsRouter } from './grns.routes';
+import { invoicesRouter } from './invoices.routes';
+import { moneyAccountsRouter } from './money-accounts.routes';
+import { paymentRequestsRouter } from './payment-requests.routes';
 
 export const API_VERSION = process.env.npm_package_version ?? '0.1.0';
 
-/** `/api/v1` routes that need the tenant context. Feature routers are mounted here (US1–US8). */
+/** `/api/v1` routes that need the tenant context. Feature routers are mounted here (US1â€“US8). */
 export function tenantRouter(): Router {
   const router = Router();
   router.use(tenantProfileRouter());
@@ -49,6 +52,9 @@ export function tenantRouter(): Router {
   router.use(bidAnalysesRouter());
   router.use(posRouter());
   router.use(grnsRouter());
+  router.use(invoicesRouter());
+  router.use(moneyAccountsRouter());
+  router.use(paymentRequestsRouter());
   return router;
 }
 
