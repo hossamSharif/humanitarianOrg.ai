@@ -6,6 +6,7 @@ import {
   idParam,
   type ApprovalRuleBody,
   type ApprovalRuleResolve,
+  type DoaType,
 } from '@ngo/shared';
 import { Router } from 'express';
 import { requirePermission } from '../middleware/permission';
@@ -22,7 +23,8 @@ export function approvalRulesRouter(service = new ApprovalRuleService()): Router
     validate({ query: approvalRuleListQuery }),
     async (req, res, next) => {
       try {
-        res.json({ data: await service.list(req.ctx!) });
+        const { docType } = req.query as unknown as { docType: DoaType };
+        res.json({ data: await service.list(req.ctx!, docType) });
       } catch (err) {
         next(err);
       }

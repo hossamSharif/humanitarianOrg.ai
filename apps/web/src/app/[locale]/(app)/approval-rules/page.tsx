@@ -1,13 +1,27 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Button } from '@ngo/ui';
+import { DOA_TYPES, type DoaType } from '@ngo/shared';
+import {
+  Button,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@ngo/ui';
 import { Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { useApprovalRules } from '@/features/approval-rules/api';
 import { RulePreview } from '@/features/approval-rules/rule-preview';
-import { RuleEditor, draftFromRule, type RuleDraft } from '@/features/approval-rules/rule-editor';
+import {
+  RuleEditor,
+  draftFromRule,
+  emptyDraft,
+  type RuleDraft,
+} from '@/features/approval-rules/rule-editor';
 import { useOffices } from '@/features/users/api';
 import { api } from '@/lib/api-client';
 import { useApiError } from '@/lib/use-api-error';
@@ -26,7 +40,8 @@ export default function ApprovalRulesPage() {
   const tCommon = useTranslations('common');
   const apiError = useApiError();
   const currency = useDoaCurrency();
-  const { data, isLoading, error } = useApprovalRules();
+  const [docType, setDocType] = useState<DoaType>('PR');
+  const { data, isLoading, error } = useApprovalRules(docType);
   const { data: offices } = useOffices();
   const [adding, setAdding] = useState<RuleDraft | null>(null);
 
@@ -34,18 +49,26 @@ export default function ApprovalRulesPage() {
   const takenOfficeIds = rules.flatMap((r) => (r.officeId ? [r.officeId] : []));
   const freeOffice = offices?.data.find((o) => !takenOfficeIds.includes(o.id));
   const orgRule = rules.find((r) => r.officeId === null);
+  const typeLabel = t(`docTypes.${docType}`);
 
   function startOfficeRule() {
     if (!freeOffice) return;
     const base = orgRule ? draftFromRule(orgRule) : null;
-    setAdding({
-      officeId: freeOffice.id,
-      name: `${t('officeRulePrefix')} ${freeOffice.code}`,
-      isActive: true,
-      financeRoleId: base?.financeRoleId ?? '',
-      approvalRoleIds: base?.approvalRoleIds ?? [],
-      bands: base?.bands ?? [{ roleId: '', maxAmount: '' }],
-    });
+    const name = `${typeLabel} — ${freeOffice.code}`;
+    setAdding(
+      base
+        ? { ...base, id: undefined, officeId: freeOffice.id, name, isActive: true }
+        : emptyDraft(docType, freeOffice.id, name)
+    );
+  }
+
+  function startOrgRule() {
+    setAdding(emptyDraft(docType, null, `${typeLabel} — ${t('orgWide')}`));
+  }
+
+  function changeType(value: string) {
+    setDocType(value as DoaType);
+    setAdding(null);
   }
 
   return (
@@ -55,10 +78,34 @@ export default function ApprovalRulesPage() {
           <h1 className="text-2xl font-bold">{t('title')}</h1>
           <p className="text-muted-foreground">{t('intro')}</p>
         </div>
-        <Button onClick={startOfficeRule} disabled={!freeOffice || adding !== null}>
-          <Plus className="me-2 h-4 w-4" aria-hidden />
-          {t('addOfficeRule')}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {!isLoading && !orgRule ? (
+            <Button variant="outline" onClick={startOrgRule} disabled={adding !== null}>
+              <Plus className="me-2 h-4 w-4" aria-hidden />
+              {t('addOrgRule')}
+            </Button>
+          ) : null}
+          <Button onClick={startOfficeRule} disabled={!freeOffice || adding !== null}>
+            <Plus className="me-2 h-4 w-4" aria-hidden />
+            {t('addOfficeRule')}
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="rule-doc-type">{t('docType')}</Label>
+        <Select value={docType} onValueChange={changeType}>
+          <SelectTrigger id="rule-doc-type" className="w-full sm:w-72">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {DOA_TYPES.map((type) => (
+              <SelectItem key={type} value={type}>
+                {t(`docTypes.${type}`)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {error ? (
@@ -68,7 +115,7 @@ export default function ApprovalRulesPage() {
       ) : null}
       {isLoading ? <p>{tCommon('loading')}</p> : null}
 
-      <RulePreview currency={currency} />
+      <RulePreview key={docType} currency={currency} docType={docType} />
 
       {adding ? (
         <RuleEditor

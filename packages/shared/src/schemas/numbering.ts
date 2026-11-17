@@ -1,9 +1,10 @@
 // Document numbering (FR-004, research R6): `{prefix}{sep}{OFFICE}{sep}{YYYY}{sep}{seq}` →
 // PR-MAD-2026-0010. Changes apply to future numbers only (FR-005).
 import { z } from 'zod';
-import type { DocTypeCode } from '../doc-types';
+import { DOC_TYPE_CODES, type DocTypeCode } from '../doc-types';
 
-export const DOC_TYPES = ['PR'] as const;
+/** Every registered document code (002 adds the D1 registry codes to the 001 'PR'). */
+export const DOC_TYPES = DOC_TYPE_CODES;
 export const docType = z.enum(DOC_TYPES);
 export type DocType = z.infer<typeof docType>;
 

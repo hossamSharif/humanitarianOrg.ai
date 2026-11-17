@@ -1,6 +1,6 @@
 'use client';
 
-import { PERMISSIONS, formatDate } from '@ngo/shared';
+import { PERMISSIONS, PERMISSIONS_002, formatDate } from '@ngo/shared';
 import {
   Badge,
   Button,
@@ -20,6 +20,7 @@ import { useDonors, useGrant, useOffices } from '@/features/grants/api';
 import { BudgetLinesTable } from '@/features/grants/budget-lines-table';
 import { GrantForm } from '@/features/grants/grant-form';
 import { GrantStatusDialog } from '@/features/grants/grant-status-dialog';
+import { GrantProcurementRules } from '@/features/procurement-settings/grant-procurement-rules';
 import {
   Amount,
   ErrorText,
@@ -68,6 +69,7 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
   if (isPending || !grant) return <p className="text-sm text-muted-foreground">{tc('loading')}</p>;
 
   const canManage = can(PERMISSIONS.GRANTS_MANAGE);
+  const canConfigureProcurement = can(PERMISSIONS_002.PROCUREMENT_CONFIGURE);
 
   return (
     <div className="space-y-6">
@@ -137,6 +139,9 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
         <TabsList>
           <TabsTrigger value="budget-lines">{t('tabs.budgetLines')}</TabsTrigger>
           <TabsTrigger value="activities">{t('tabs.activities')}</TabsTrigger>
+          {canConfigureProcurement ? (
+            <TabsTrigger value="procurement-rules">{t('tabs.procurementRules')}</TabsTrigger>
+          ) : null}
         </TabsList>
         <TabsContent value="budget-lines" className="space-y-2">
           <div className="flex justify-end">
@@ -152,6 +157,11 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
         <TabsContent value="activities">
           <ActivitiesTable grantId={grant.id} />
         </TabsContent>
+        {canConfigureProcurement ? (
+          <TabsContent value="procurement-rules" className="pt-2">
+            <GrantProcurementRules grantId={grant.id} />
+          </TabsContent>
+        ) : null}
       </Tabs>
 
       <GrantForm

@@ -19,7 +19,7 @@ import type {
   UpdateTenantInput,
   UpdateUnitInput,
 } from '@ngo/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ZodError } from 'zod';
 import { api, ApiRequestError } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
@@ -123,6 +123,8 @@ export function useNumbering(docType = 'PR') {
   return useQuery({
     queryKey: queryKeys.setup.numbering(docType),
     queryFn: () => api.get<NumberingConfigResponse>(`/numbering/${docType}`),
+    // switching the document type keeps the page (and its type selector) on screen
+    placeholderData: keepPreviousData,
   });
 }
 

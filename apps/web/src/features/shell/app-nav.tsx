@@ -6,6 +6,7 @@ import {
   BarChart3,
   BookOpen,
   Building2,
+  Contact,
   CalendarRange,
   ClipboardCheck,
   ClipboardList,
@@ -40,6 +41,9 @@ const P002 = {
   PROCUREMENT_READ: 'procurement:read',
   FINANCE_READ: 'finance:read',
   REPORTS_READ: 'reports:read',
+  SUPPLIERS_READ: 'suppliers:read',
+  SUPPLIERS_VET: 'suppliers:vet',
+  PAYMENT_CREATE: 'payment:create',
 } as const;
 
 type NavPermission = Permission | (typeof P002)[keyof typeof P002];
@@ -89,7 +93,7 @@ const GROUPS: NavGroup[] = [
         href: '/procurement/suppliers',
         label: 'suppliers',
         icon: Building2,
-        anyOf: [P002.PROCUREMENT_READ],
+        anyOf: [P002.PROCUREMENT_READ, P002.SUPPLIERS_READ, P002.SUPPLIERS_VET],
       },
       {
         href: '/procurement/rfqs',
@@ -140,6 +144,12 @@ const GROUPS: NavGroup[] = [
         anyOf: [P002.FINANCE_READ],
       },
       { href: '/finance/advances', label: 'advances', icon: HandCoins, anyOf: [P002.FINANCE_READ] },
+      {
+        href: '/finance/staff-payees',
+        label: 'staffPayees',
+        icon: Contact,
+        anyOf: [P002.PAYMENT_CREATE],
+      },
       {
         href: '/finance/vouchers',
         label: 'vouchers',

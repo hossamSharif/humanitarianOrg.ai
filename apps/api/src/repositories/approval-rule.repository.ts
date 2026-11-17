@@ -1,4 +1,4 @@
-// PR approval rules and their steps (data-model §2, research R8), and the reads the routing
+// Approval rules of every DoA type and their steps (data-model §2, research R8), and the reads the routing
 // service needs (ApprovalRoutingStore). Runs inside withTenantTx: a rule's steps are replaced as
 // a whole, and migration 0011 checks the result at commit.
 import type {
@@ -15,15 +15,16 @@ import { AppError } from '../middleware/error';
 import type {
   ApprovalRoutingStore,
   Candidate,
+  DocRuleStepDraft,
   PrStepWriter,
   RoleName,
   RuleLike,
-  RuleStepDraft,
   Signature,
 } from '../services/approval-routing.service';
 
 type Fragment = postgres.PendingQuery<postgres.Row[]>;
 export interface RuleValues {
+  docType?: DoaType;
   officeId: string | null;
   name: string;
   isActive: boolean;
@@ -45,11 +46,11 @@ interface RuleRow {
   }[];
 }
 
-/** PR rules as the 001 rules API shows them (only PR kinds occur in PR rules). */
+/** A rule as the rules API shows it. */
 function toRule(r: RuleRow): ApprovalRule {
   return {
     id: r.id,
-    docType: 'PR',
+    docType: r.doc_type,
     officeId: r.office_id,
     name: r.name,
     isActive: r.is_active,
@@ -67,7 +68,8 @@ export class ApprovalRuleRepository implements ApprovalRoutingStore {
     private readonly tenantId: string
   ) {}
 
-  private select(where: Fragment, doaType: DoaType = 'PR') {
+  /** `doaType` null = any type (lookups by id). */
+  private select(where: Fragment, doaType: DoaType | null = 'PR') {
     // amounts leave as text so no float rounding can creep in
     return this.sql<RuleRow[]>`
       select r.id, r.doc_type, r.office_id, r.name, r.is_active,
@@ -80,12 +82,13 @@ export class ApprovalRuleRepository implements ApprovalRoutingStore {
                from public.approval_rule_step s where s.rule_id = r.id
              ), '[]'::jsonb) as steps
       from public.approval_rule r
-      where r.tenant_id = ${this.tenantId} and r.doc_type = ${doaType} ${where}
+      where r.tenant_id = ${this.tenantId}
+        ${doaType === null ? this.sql`` : this.sql`and r.doc_type = ${doaType}`} ${where}
       order by r.office_id nulls first, r.name`;
   }
 
-  async list(): Promise<ApprovalRule[]> {
-    return (await this.select(this.sql``)).map(toRule);
+  async list(doaType: DoaType = 'PR'): Promise<ApprovalRule[]> {
+    return (await this.select(this.sql``, doaType)).map(toRule);
   }
 
   /** PR rules for the 001 callers; any DoA type for the document workflow (002). */
@@ -94,7 +97,7 @@ export class ApprovalRuleRepository implements ApprovalRoutingStore {
   }
 
   async findById(id: string): Promise<ApprovalRule | null> {
-    const [row] = await this.select(this.sql`and r.id = ${id}`);
+    const [row] = await this.select(this.sql`and r.id = ${id}`, null);
     return row ? toRule(row) : null;
   }
 
@@ -104,17 +107,17 @@ export class ApprovalRuleRepository implements ApprovalRoutingStore {
     return rule;
   }
 
-  async insert(values: RuleValues, steps: readonly RuleStepDraft[]): Promise<string> {
+  async insert(values: RuleValues, steps: readonly DocRuleStepDraft[]): Promise<string> {
     const [row] = await this.sql<{ id: string }[]>`
       insert into public.approval_rule (tenant_id, doc_type, office_id, name, is_active)
-      values (${this.tenantId}, 'PR', ${values.officeId}, ${values.name}, ${values.isActive})
+      values (${this.tenantId}, ${values.docType ?? 'PR'}, ${values.officeId}, ${values.name}, ${values.isActive})
       returning id`;
     await this.insertSteps(row!.id, steps);
     return row!.id;
   }
 
   /** Full replace of the rule row and its steps. */
-  async replace(id: string, values: RuleValues, steps: readonly RuleStepDraft[]): Promise<void> {
+  async replace(id: string, values: RuleValues, steps: readonly DocRuleStepDraft[]): Promise<void> {
     const rows = await this.sql`
       update public.approval_rule
       set office_id = ${values.officeId}, name = ${values.name}, is_active = ${values.isActive}
@@ -126,7 +129,7 @@ export class ApprovalRuleRepository implements ApprovalRoutingStore {
     await this.insertSteps(id, steps);
   }
 
-  private async insertSteps(ruleId: string, steps: readonly RuleStepDraft[]): Promise<void> {
+  private async insertSteps(ruleId: string, steps: readonly DocRuleStepDraft[]): Promise<void> {
     if (steps.length === 0) return;
     const sql = this.sql;
     await sql`

@@ -1,13 +1,16 @@
-// Approval rule configuration (FR-019, FR-035) and the admin route preview. Structure is checked
+// Approval rule configuration (FR-019, FR-035; 002: every DoA type) and the admin route preview. Structure is checked
 // by the routing service before writing; roles and the office must belong to the tenant.
 // Editing a rule never changes in-flight PRs: their routes are materialised (FR-005).
-import type {
-  ApprovalRule,
-  ApprovalRuleBody,
-  ApprovalRuleIssue,
-  ApprovalRuleResolve,
-  ResolvedRoute,
-  StepKind,
+import {
+  DOC_TYPE_CODES,
+  DOC_TYPE_DOA,
+  type ApprovalRule,
+  type ApprovalRuleBody,
+  type ApprovalRuleIssue,
+  type ApprovalRuleResolve,
+  type DoaType,
+  type DocTypeCode,
+  type ResolvedRoute,
 } from '@ngo/shared';
 import { withTenantTx } from '../db/tx';
 import { AppError } from '../middleware/error';
@@ -50,15 +53,20 @@ async function assertReferences(repos: ApprovalRuleRepos, body: ApprovalRuleBody
   }
 }
 
+/** The document code a DoA type's preview is checked as (segregation needs one). */
+function docTypeFor(doaType: DoaType): DocTypeCode {
+  return DOC_TYPE_CODES.find((code) => DOC_TYPE_DOA[code] === doaType) ?? 'PR';
+}
+
 export class ApprovalRuleService {
   constructor(private readonly deps: ApprovalRuleServiceDeps = defaultApprovalRuleDeps) {}
 
-  list(ctx: RequestContext): Promise<ApprovalRule[]> {
-    return this.deps.run(ctx, ({ rules }) => rules.list());
+  list(ctx: RequestContext, docType: DoaType = 'PR'): Promise<ApprovalRule[]> {
+    return this.deps.run(ctx, ({ rules }) => rules.list(docType));
   }
 
   create(ctx: RequestContext, body: ApprovalRuleBody): Promise<ApprovalRule> {
-    validateRule(body.steps);
+    validateRule(body.steps, body.docType);
     return this.deps.run(ctx, async (repos) => {
       await assertReferences(repos, body);
       const id = await repos.rules.insert(body, body.steps);
@@ -67,9 +75,14 @@ export class ApprovalRuleService {
   }
 
   update(ctx: RequestContext, id: string, body: ApprovalRuleBody): Promise<ApprovalRule> {
-    validateRule(body.steps);
+    validateRule(body.steps, body.docType);
     return this.deps.run(ctx, async (repos) => {
-      await repos.rules.getById(id);
+      const current = await repos.rules.getById(id);
+      if (current.docType !== body.docType) {
+        throw new AppError('VALIDATION_ERROR', 'The document type of a rule cannot change', [
+          { field: 'body.docType', message: 'immutable' },
+        ]);
+      }
       await assertReferences(repos, body);
       await repos.rules.replace(id, body, body.steps);
       return repos.rules.getById(id);
@@ -83,15 +96,23 @@ export class ApprovalRuleService {
         throw new AppError('NOT_FOUND', 'Office not found');
       }
       const routing = new ApprovalRoutingService(rules);
-      const route = await routing.resolveRoute(body.officeId, body.amount);
-      // preview: no PR yet, so no creator and no signatures to exclude
+      const route = await routing.resolveRoute(body.officeId, body.amount, body.docType);
+      // preview: no document yet, so no creator and no signatures to exclude
       const counts = await routing.eligibleCounts(
         route,
-        { id: null, requesterId: null, requestingOfficeId: body.officeId },
+        {
+          id: null,
+          requesterId: null,
+          requestingOfficeId: body.officeId,
+          ...(body.docType === 'PR'
+            ? {}
+            : { doc: { docType: docTypeFor(body.docType), doaType: body.docType } }),
+        },
         1
       );
       const names = await rules.roleNames(route.steps.map((s) => s.roleId));
       return {
+        docType: body.docType,
         ruleId: route.ruleId,
         ruleName: route.ruleName,
         officeId: route.officeId,
@@ -99,8 +120,7 @@ export class ApprovalRuleService {
         currency: await rules.doaReferenceCurrency(),
         steps: route.steps.map((s, i) => ({
           stepOrder: s.stepOrder,
-          // a PR route has only PR kinds
-          kind: s.kind as StepKind,
+          kind: s.kind,
           roleId: s.roleId,
           roleNameAr: names.get(s.roleId)?.nameAr ?? '',
           roleNameEn: names.get(s.roleId)?.nameEn ?? '',

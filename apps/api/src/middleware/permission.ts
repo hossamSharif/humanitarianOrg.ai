@@ -16,3 +16,18 @@ export function requirePermission(code: Permission): RequestHandler {
     next();
   };
 }
+
+/** 403 unless the caller holds at least one of `codes`. */
+export function requireAnyPermission(...codes: Permission[]): RequestHandler {
+  return (req, _res, next) => {
+    if (!req.ctx) {
+      next(new AppError('FORBIDDEN', 'No tenant context'));
+      return;
+    }
+    if (!codes.some((code) => req.ctx!.permissions.has(code))) {
+      next(new AppError('FORBIDDEN', `Missing permission ${codes.join(' or ')}`));
+      return;
+    }
+    next();
+  };
+}

@@ -14,6 +14,9 @@ import { usersRouter } from './users.routes';
 import { prsRouter } from './prs.routes';
 import { notificationsRouter } from './notifications.routes';
 import { reportsRouter } from './reports.routes';
+import { procurementSettingsRouter } from './procurement-settings.routes';
+import { suppliersRouter } from './suppliers.routes';
+import { staffPayeesRouter } from './staff-payees.routes';
 
 export const API_VERSION = process.env.npm_package_version ?? '0.1.0';
 
@@ -35,6 +38,9 @@ export function tenantRouter(): Router {
   router.use(prsRouter());
   router.use(notificationsRouter());
   router.use(reportsRouter());
+  router.use(procurementSettingsRouter());
+  router.use(suppliersRouter());
+  router.use(staffPayeesRouter());
   return router;
 }
 

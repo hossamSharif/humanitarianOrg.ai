@@ -3,7 +3,8 @@
 import type {
   ApprovalRule,
   ApprovalRuleBodyInput,
-  ApprovalRuleResolve,
+  ApprovalRuleResolveInput,
+  DoaType,
   ResolvedRoute,
 } from '@ngo/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,11 +14,10 @@ export const approvalRulesKeys = {
   all: ['approval-rules'] as const,
 };
 
-export function useApprovalRules() {
+export function useApprovalRules(docType: DoaType = 'PR') {
   return useQuery({
-    queryKey: approvalRulesKeys.all,
-    queryFn: () =>
-      api.get<{ data: ApprovalRule[] }>('/approval-rules', { query: { docType: 'PR' } }),
+    queryKey: [...approvalRulesKeys.all, docType],
+    queryFn: () => api.get<{ data: ApprovalRule[] }>('/approval-rules', { query: { docType } }),
   });
 }
 
@@ -34,7 +34,7 @@ export function useSaveApprovalRule() {
 
 export function useResolveRoute() {
   return useMutation({
-    mutationFn: (body: ApprovalRuleResolve) =>
+    mutationFn: (body: ApprovalRuleResolveInput) =>
       api.post<ResolvedRoute>('/approval-rules/resolve', body),
   });
 }

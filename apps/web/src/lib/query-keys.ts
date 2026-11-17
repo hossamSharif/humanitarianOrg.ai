@@ -39,6 +39,22 @@ export const queryKeys = {
     units: ['setup', 'units'] as const,
     numbering: (docType: string) => ['setup', 'numbering', docType] as const,
   },
+  procurement: {
+    settings: ['procurement', 'settings'] as const,
+    /** null = the tenant's bands, else the grant's */
+    bands: (grantId: string | null) => ['procurement', 'bands', grantId] as const,
+    deductions: ['procurement', 'deduction-types'] as const,
+    categories: (kind: 'payment' | 'supplier') => ['procurement', 'categories', kind] as const,
+  },
+  suppliers: {
+    all: ['suppliers'] as const,
+    list: (filters: Record<string, unknown>) => ['suppliers', 'list', filters] as const,
+    detail: (id: string) => ['suppliers', 'detail', id] as const,
+  },
+  staffPayees: {
+    all: ['staff-payees'] as const,
+    list: (filters: Record<string, unknown>) => ['staff-payees', 'list', filters] as const,
+  },
   /** any 002 document, by its route slug (bid-analyses, pos, vouchers, …) */
   docs: {
     all: (slug: string) => ['docs', slug] as const,

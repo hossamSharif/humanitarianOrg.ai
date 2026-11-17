@@ -29,6 +29,8 @@ export * from './schemas/report';
 export * from './schemas/notification';
 export * from './schemas/doc-actions';
 export * from './schemas/doc-attachment';
+export * from './schemas/procurement-config';
+export * from './schemas/supplier';
 export * from './doc-types';
 export * from './procurement';
 export * from './accounting';

@@ -23,14 +23,14 @@ import {
   TableHeader,
   TableRow,
 } from '@ngo/ui';
-import { formatAmount } from '@ngo/shared';
+import { formatAmount, type DoaType } from '@ngo/shared';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState, type FormEvent } from 'react';
 import { useBilingual, useOffices } from '@/features/users/api';
 import { useApiError } from '@/lib/use-api-error';
 import { useResolveRoute } from './api';
 
-export function RulePreview({ currency }: { currency: string }) {
+export function RulePreview({ currency, docType = 'PR' }: { currency: string; docType?: DoaType }) {
   const t = useTranslations('approvalRules');
   const locale = useLocale();
   const apiError = useApiError();
@@ -43,7 +43,7 @@ export function RulePreview({ currency }: { currency: string }) {
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!officeId || !amount) return;
-    resolve.mutate({ officeId, amount });
+    resolve.mutate({ docType, officeId, amount });
   }
 
   const route = resolve.data;

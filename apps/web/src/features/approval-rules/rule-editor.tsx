@@ -1,15 +1,19 @@
 'use client';
 
-// One PR approval rule (DoA, FR-019): Finance Check locked as step 1 (FR-035), optional ordered
-// approval steps, then Final Approval as amount bands in the DoA reference currency. Bands are
-// edited as "up to" limits, so they are contiguous by construction: each band starts where the
-// previous one ends and the last is open-ended. The API still validates everything.
+// One approval rule (DoA, FR-019) of any DoA type: the type's checking step as step 1 (locked
+// for PR — Finance Check, FR-035 — and for PV/RV/JV — Check; optional for PAY/DPR; none for the
+// others), optional ordered approval steps, then Final Approval as amount bands in the DoA
+// reference currency. Bands are edited as "up to" limits, so they are contiguous by
+// construction: each band starts where the previous one ends and the last is open-ended. The
+// API still validates everything.
 import {
+  REQUIRED_FIRST_KIND,
   formatAmount,
   parseAmount,
   type ApprovalRule,
   type ApprovalRuleBodyInput,
   type ApprovalRuleIssue,
+  type DoaType,
 } from '@ngo/shared';
 import {
   Button,
@@ -44,12 +48,45 @@ export interface Band {
 
 export interface RuleDraft {
   id?: string;
+  docType: DoaType;
   officeId: string | null;
   name: string;
   isActive: boolean;
+  /** the checking step (finance check / check); only used when the type has one */
+  includeCheck: boolean;
   financeRoleId: string;
   approvalRoleIds: string[];
   bands: Band[];
+}
+
+/** The checking step kind a DoA type may start with (mirrors app.approval_rule_check). */
+export function checkingKind(docType: DoaType): 'finance_check' | 'check' | null {
+  if (docType === 'PR' || docType === 'PAY' || docType === 'DPR') return 'finance_check';
+  if (docType === 'PV' || docType === 'RV' || docType === 'JV') return 'check';
+  return null;
+}
+
+/** The type's routes must start with the checking step. */
+export function checkRequired(docType: DoaType): boolean {
+  return REQUIRED_FIRST_KIND[docType] !== null;
+}
+
+/** A new rule of the type, with the checking step when the type has one. */
+export function emptyDraft(docType: DoaType, officeId: string | null, name: string): RuleDraft {
+  return {
+    docType,
+    officeId,
+    name,
+    isActive: true,
+    includeCheck: checkingKind(docType) !== null,
+    financeRoleId: '',
+    approvalRoleIds: [],
+    bands: [{ roleId: '', maxAmount: '' }],
+  };
+}
+
+function firstOrder(draft: Pick<RuleDraft, 'docType' | 'includeCheck'>): number {
+  return checkingKind(draft.docType) !== null && draft.includeCheck ? 2 : 1;
 }
 
 export function draftFromRule(rule: ApprovalRule): RuleDraft {
@@ -57,12 +94,15 @@ export function draftFromRule(rule: ApprovalRule): RuleDraft {
   const finals = byOrder
     .filter((s) => s.kind === 'final_approval')
     .sort((a, b) => parseAmount(a.minAmount ?? '0').comparedTo(parseAmount(b.minAmount ?? '0')));
+  const check = byOrder.find((s) => s.kind === 'finance_check' || s.kind === 'check');
   return {
     id: rule.id,
+    docType: rule.docType,
     officeId: rule.officeId,
     name: rule.name,
     isActive: rule.isActive,
-    financeRoleId: byOrder.find((s) => s.kind === 'finance_check')?.roleId ?? '',
+    includeCheck: check !== undefined || checkRequired(rule.docType),
+    financeRoleId: check?.roleId ?? '',
     approvalRoleIds: byOrder.filter((s) => s.kind === 'approval').map((s) => s.roleId),
     bands: finals.length
       ? finals.map((s) => ({ roleId: s.roleId, maxAmount: s.maxAmount ?? '' }))
@@ -71,15 +111,20 @@ export function draftFromRule(rule: ApprovalRule): RuleDraft {
 }
 
 export function draftToBody(draft: RuleDraft): ApprovalRuleBodyInput {
-  const finalOrder = draft.approvalRoleIds.length + 2;
+  const first = firstOrder(draft);
+  const finalOrder = draft.approvalRoleIds.length + first;
+  const kind = checkingKind(draft.docType);
   return {
+    docType: draft.docType,
     officeId: draft.officeId,
     name: draft.name,
     isActive: draft.isActive,
     steps: [
-      { stepOrder: 1, kind: 'finance_check', roleId: draft.financeRoleId },
+      ...(kind !== null && first === 2
+        ? [{ stepOrder: 1, kind, roleId: draft.financeRoleId }]
+        : []),
       ...draft.approvalRoleIds.map((roleId, i) => ({
-        stepOrder: i + 2,
+        stepOrder: i + first,
         kind: 'approval' as const,
         roleId,
       })),
@@ -149,7 +194,10 @@ export function RuleEditor({
   const [issues, setIssues] = useState<ApprovalRuleIssue[]>([]);
   const set = <K extends keyof RuleDraft>(key: K, value: RuleDraft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
-  const finalOrder = draft.approvalRoleIds.length + 2;
+  const first = firstOrder(draft);
+  const finalOrder = draft.approvalRoleIds.length + first;
+  const kind = checkingKind(draft.docType);
+  const required = checkRequired(draft.docType);
 
   function moveApproval(index: number, delta: number) {
     const list = [...draft.approvalRoleIds];
@@ -244,24 +292,41 @@ export function RuleEditor({
           </label>
 
           <ol className="space-y-4">
-            <li className="space-y-2 rounded-md border p-3">
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <Lock className="h-4 w-4 text-muted-foreground" aria-hidden />
-                {t('stepLabel', { order: 1 })} · {t('kinds.finance_check')}
-              </div>
-              <p className="text-xs text-muted-foreground">{t('financeLocked')}</p>
-              <RoleSelect
-                value={draft.financeRoleId}
-                onChange={(v) => set('financeRoleId', v)}
-                label={t('requiredRole')}
-              />
-            </li>
+            {kind !== null && !required ? (
+              <li>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={draft.includeCheck}
+                    onCheckedChange={(on) => set('includeCheck', on === true)}
+                  />
+                  {t('includeCheck', { kind: t(`kinds.${kind}`) })}
+                </label>
+              </li>
+            ) : null}
+            {kind !== null && first === 2 ? (
+              <li className="space-y-2 rounded-md border p-3">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  {required ? <Lock className="h-4 w-4 text-muted-foreground" aria-hidden /> : null}
+                  {t('stepLabel', { order: 1 })} · {t(`kinds.${kind}`)}
+                </div>
+                {required ? (
+                  <p className="text-xs text-muted-foreground">
+                    {draft.docType === 'PR' ? t('financeLocked') : t('checkLocked')}
+                  </p>
+                ) : null}
+                <RoleSelect
+                  value={draft.financeRoleId}
+                  onChange={(v) => set('financeRoleId', v)}
+                  label={t('requiredRole')}
+                />
+              </li>
+            ) : null}
 
             {draft.approvalRoleIds.map((roleId, i) => (
               <li key={i} className="space-y-2 rounded-md border p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-semibold">
-                    {t('stepLabel', { order: i + 2 })} · {t('kinds.approval')}
+                    {t('stepLabel', { order: i + first })} · {t('kinds.approval')}
                   </span>
                   <div className="flex gap-1">
                     <Button

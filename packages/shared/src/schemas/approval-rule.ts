@@ -3,10 +3,15 @@
 // Structural rules (finance check first, contiguous bands) are checked by the API's
 // approval-routing service, which answers 422 APPROVAL_RULE_INVALID with the issues below.
 import { z } from 'zod';
-import type { StepKind } from '../permissions';
+import { DOA_TYPES, DOC_STEP_KINDS, type DoaType, type DocStepKind } from '../doc-types';
 import { moneyString, uuid } from './common';
 
+/** 001 PR step kinds. */
 export const stepKind = z.enum(['finance_check', 'approval', 'final_approval']);
+/** Step kinds of any DoA type (002 adds the voucher `check`). */
+export const docStepKind = z.enum(DOC_STEP_KINDS);
+/** 002: rules exist per DoA type; 001 callers omit it and get PR. */
+export const doaType = z.enum(DOA_TYPES);
 
 const optionalAmount = z
   .union([moneyString, z.literal(''), z.null()])
@@ -15,13 +20,14 @@ const optionalAmount = z
 
 export const approvalRuleStep = z.object({
   stepOrder: z.number().int().min(1).max(20),
-  kind: stepKind,
+  kind: docStepKind,
   roleId: uuid,
   minAmount: optionalAmount,
   maxAmount: optionalAmount,
 });
 
 export const approvalRuleBody = z.object({
+  docType: doaType.default('PR'),
   officeId: uuid.nullable(),
   name: z.string().trim().min(1).max(200),
   isActive: z.boolean().default(true),
@@ -29,10 +35,11 @@ export const approvalRuleBody = z.object({
 });
 
 export const approvalRuleListQuery = z.object({
-  docType: z.literal('PR').default('PR'),
+  docType: doaType.default('PR'),
 });
 
 export const approvalRuleResolve = z.object({
+  docType: doaType.default('PR'),
   officeId: uuid,
   /** DoA reference-currency amount */
   amount: moneyString,
@@ -42,6 +49,7 @@ export type ApprovalRuleStepInput = z.infer<typeof approvalRuleStep>;
 export type ApprovalRuleBody = z.infer<typeof approvalRuleBody>;
 export type ApprovalRuleBodyInput = z.input<typeof approvalRuleBody>;
 export type ApprovalRuleResolve = z.infer<typeof approvalRuleResolve>;
+export type ApprovalRuleResolveInput = z.input<typeof approvalRuleResolve>;
 
 export type ApprovalRuleIssueReason =
   | 'no_steps'
@@ -75,7 +83,7 @@ export interface ApprovalRuleIssue {
 export interface ApprovalRuleStep {
   id: string;
   stepOrder: number;
-  kind: StepKind;
+  kind: DocStepKind;
   roleId: string;
   minAmount: string | null;
   maxAmount: string | null;
@@ -83,7 +91,7 @@ export interface ApprovalRuleStep {
 
 export interface ApprovalRule {
   id: string;
-  docType: 'PR';
+  docType: DoaType;
   officeId: string | null;
   name: string;
   isActive: boolean;
@@ -92,6 +100,7 @@ export interface ApprovalRule {
 
 /** POST /approval-rules/resolve response: the route a PR would take, with eligible counts. */
 export interface ResolvedRoute {
+  docType: DoaType;
   ruleId: string;
   ruleName: string;
   officeId: string | null;
@@ -99,7 +108,7 @@ export interface ResolvedRoute {
   currency: string;
   steps: {
     stepOrder: number;
-    kind: StepKind;
+    kind: DocStepKind;
     roleId: string;
     roleNameAr: string;
     roleNameEn: string;
