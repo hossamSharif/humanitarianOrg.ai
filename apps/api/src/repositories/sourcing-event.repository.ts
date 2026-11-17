@@ -638,6 +638,14 @@ export class SourcingEventRepository {
     };
   }
 
+  /** The event's live (not cancelled) analysis. */
+  async liveAnalysisId(id: string): Promise<string | null> {
+    const [row] = await this.sql<{ id: string }[]>`
+      select id from public.bid_analysis
+      where tenant_id = ${this.tenantId} and sourcing_event_id = ${id} and status <> 'cancelled'`;
+    return row?.id ?? null;
+  }
+
   /** Whether a splitting warning was acknowledged (doc_signature acknowledge_warning). */
   async splittingAcknowledged(id: string, docType: 'RFQ' | 'TND'): Promise<boolean> {
     const [row] = await this.sql<{ id: string }[]>`

@@ -18,6 +18,7 @@ import { procurementSettingsRouter } from './procurement-settings.routes';
 import { suppliersRouter } from './suppliers.routes';
 import { staffPayeesRouter } from './staff-payees.routes';
 import { rfqsRouter } from './rfqs.routes';
+import { bidAnalysesRouter } from './bid-analyses.routes';
 
 export const API_VERSION = process.env.npm_package_version ?? '0.1.0';
 
@@ -43,6 +44,7 @@ export function tenantRouter(): Router {
   router.use(suppliersRouter());
   router.use(staffPayeesRouter());
   router.use(rfqsRouter());
+  router.use(bidAnalysesRouter());
   return router;
 }
 

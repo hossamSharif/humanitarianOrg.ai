@@ -5,6 +5,7 @@
 // issue / cancel / re-issue, and the history.
 import { formatDate, formatDateTime, type SourcingEventDetail } from '@ngo/shared';
 import {
+  Button,
   Card,
   CardContent,
   CardHeader,
@@ -18,11 +19,12 @@ import {
 } from '@ngo/ui';
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
+import { useCreateAnalysis } from '@/features/analysis/api';
 import { HistoryTimeline } from '@/features/documents/history-timeline';
 import { DocStatusBadge } from '@/features/documents/status-badge';
 import { Amount, ErrorText } from '@/features/grants/shared';
 import { useTenantTimeZone } from '@/features/setup/api';
-import { Link } from '@/i18n/routing';
+import { Link, useRouter } from '@/i18n/routing';
 import { useApiError } from '@/lib/use-api-error';
 import { useRfq, useRfqHistory } from './api';
 import { CriteriaEditor } from './criteria-editor';
@@ -82,6 +84,38 @@ function LinesView({ event }: { event: SourcingEventDetail }) {
   );
 }
 
+/** Start the analysis once opened, or go to it (002 US5). */
+function AnalysisLink({ event }: { event: SourcingEventDetail }) {
+  const t = useTranslations('sourcing');
+  const apiError = useApiError();
+  const router = useRouter();
+  const create = useCreateAnalysis();
+  if (event.analysisId) {
+    return (
+      <Button variant="outline" asChild>
+        <Link href={`/procurement/analyses/${event.analysisId}`}>{t('openAnalysis')}</Link>
+      </Button>
+    );
+  }
+  if (!event.availableActions.includes('create_analysis')) return null;
+  return (
+    <div className="space-y-1">
+      <Button
+        disabled={create.isPending}
+        onClick={() =>
+          create.mutate(
+            { sourcingEventId: event.id },
+            { onSuccess: (a) => router.push(`/procurement/analyses/${a.id}`) }
+          )
+        }
+      >
+        {t('startAnalysis')}
+      </Button>
+      {create.error ? <ErrorText>{apiError(create.error)}</ErrorText> : null}
+    </div>
+  );
+}
+
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
@@ -116,7 +150,10 @@ export function RfqDetail({ id }: { id: string }) {
           </div>
           <p className="text-muted-foreground">{event.title}</p>
         </div>
-        <RfqActions event={event} />
+        <div className="flex flex-wrap items-start gap-2">
+          <AnalysisLink event={event} />
+          <RfqActions event={event} />
+        </div>
       </div>
 
       {event.reissuedFromId || event.reissuedToId || event.cancelReason ? (

@@ -232,14 +232,16 @@ export class SourcingService {
   /** The event with its lines, criteria, invitations and the caller's actions. */
   async detail(repos: SourcingRepos, id: string): Promise<SourcingEventDetail> {
     const event = await repos.events.get(id, this.kind);
-    const [lines, criteria, invitations, acknowledged, offers, opening] = await Promise.all([
-      repos.lines.list(id),
-      repos.criteria.list(id),
-      repos.invitations.list(id),
-      repos.events.splittingAcknowledged(id, this.docType),
-      repos.offers.list(id),
-      repos.openings.find(id),
-    ]);
+    const [lines, criteria, invitations, acknowledged, offers, opening, analysisId] =
+      await Promise.all([
+        repos.lines.list(id),
+        repos.criteria.list(id),
+        repos.invitations.list(id),
+        repos.events.splittingAcknowledged(id, this.docType),
+        repos.offers.list(id),
+        repos.openings.find(id),
+        repos.events.liveAnalysisId(id),
+      ]);
     const validOfferCount = offers.filter(
       (o) => o.status === 'logged' || o.status === 'late_accepted'
     ).length;
@@ -262,8 +264,16 @@ export class SourcingService {
       opening,
       validOfferCount,
       needsWaiverOrReissue: event.openedAt !== null && validOfferCount < requiredMinQuotations,
-      analysisId: null,
-      availableActions: this.actionsFor(repos.ctx, event),
+      analysisId,
+      availableActions: [
+        ...this.actionsFor(repos.ctx, event),
+        ...(event.openedAt &&
+        !analysisId &&
+        event.status === 'opened' &&
+        repos.ctx.permissions.has(PERMISSIONS_002.RFQ_CREATE)
+          ? (['create_analysis'] as const)
+          : []),
+      ],
     };
   }
 
