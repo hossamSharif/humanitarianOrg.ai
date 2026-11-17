@@ -31,6 +31,7 @@ import { useSubmitDoc } from '@/features/documents/api';
 import { DocHistoryTimeline } from '@/features/documents/history-timeline';
 import { ReasonDialog } from '@/features/documents/reason-dialog';
 import { DocStatusBadge } from '@/features/documents/status-badge';
+import { GenerateVoucherButton } from '@/features/vouchers/generate-voucher-button';
 import { StepsView } from '@/features/documents/steps-view';
 import { Amount, ErrorText, WarningBanner, useLocalizedName } from '@/features/grants/shared';
 import { Link } from '@/i18n/routing';
@@ -400,6 +401,12 @@ export function PaymentRequestDetailView({ id }: { id: string }) {
               <Button disabled={submit.isPending} onClick={() => submit.mutate(r.version)}>
                 {t('submit')}
               </Button>
+            ) : null}
+            {r.availableActions.includes('generate_voucher') && !r.voucher ? (
+              <GenerateVoucherButton
+                paymentRequestId={r.id}
+                cheque={r.paymentMethod === 'cheque'}
+              />
             ) : null}
             {r.voucher ? (
               <Button asChild variant="outline">

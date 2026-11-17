@@ -165,7 +165,17 @@ export function paymentRequestAdapter(
       if (r.invoiceId) await repos.invoices.setStatus(r.invoiceId, 'matched');
     },
 
-    async onReleased() {},
+    /** No budget to release (Q3); an approved request with a live voucher stays. */
+    async onReleased(r, reason) {
+      if (reason !== 'cancelled' || r.status !== 'approved') return;
+      const [live] = await tx.sql<{ id: string }[]>`
+        select id from public.voucher
+        where tenant_id = ${ctx.tenantId} and payment_request_id = ${r.id}
+          and reversal_of_id is null and reversed_by_id is null and status <> 'cancelled'`;
+      if (live) {
+        throw new AppError('INVALID_STATE', 'Cancel the voucher of this payment request first');
+      }
+    },
 
     async setStatus(r, change) {
       switch (change.kind) {

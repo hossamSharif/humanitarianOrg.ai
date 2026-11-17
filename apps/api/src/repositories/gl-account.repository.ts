@@ -1,4 +1,4 @@
-// gl_account: the chart of accounts (002 data-model §6). A child takes its parent's type and the
+// gl_account: the chart of accounts (002 data-model Â§6). A child takes its parent's type and the
 // parent must be a group (trigger app.gl_account_hierarchy). An account that anything refers to
 // is deactivated, not deleted (US12-1): `inUse` lists the references, and the FKs are restrict.
 import type { GlAccountType, GlAccountView } from '@ngo/shared';
@@ -49,6 +49,7 @@ export class GlAccountRepository {
       or exists (select 1 from public.control_account_setting x where x.account_id = ${id})
       or exists (select 1 from public.deduction_type x where x.payable_account_id = ${id})
       or exists (select 1 from public.payment_request_deduction x where x.payable_account_id = ${id})
+      or exists (select 1 from public.voucher_line x where x.account_id = ${id})
     )`;
   }
 
