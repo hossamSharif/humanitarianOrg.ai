@@ -1674,7 +1674,101 @@
       "pending": "لم يُشعَر بعد"
     }
   },
-  "orders": {},
+  "orders": {
+    "title": "أوامر الشراء",
+    "intro": "أوامر الشراء والعقود المنشأة من الترسيات المعتمدة.",
+    "statusFilter": "تصفية حسب الحالة",
+    "allStatuses": "كل الحالات",
+    "status": {
+      "draft": "مسودة",
+      "pending_approval": "بانتظار الاعتماد",
+      "approved": "معتمد",
+      "acknowledged": "مؤكَّد من المورد",
+      "partially_received": "مستلم جزئياً",
+      "fully_received": "مستلم بالكامل",
+      "closed": "مغلق",
+      "returned": "معاد",
+      "rejected": "مرفوض",
+      "cancelled": "ملغى"
+    },
+    "number": "الرقم",
+    "supplier": "المورد",
+    "analysis": "التحليل",
+    "statusLabel": "الحالة",
+    "total": "الإجمالي",
+    "poDate": "تاريخ أمر الشراء",
+    "draftNumber": "مسودة (بلا رقم بعد)",
+    "empty": "لا توجد أوامر شراء بعد.",
+    "kind": {
+      "po": "أمر شراء",
+      "contract": "عقد",
+      "service": "أمر شراء خدمات"
+    },
+    "blacklisted": "أُدرج المورد في القائمة السوداء بعد اعتماد هذا الأمر.",
+    "closedWith": "أُغلق: {reason}",
+    "terms": {
+      "title": "الشروط",
+      "poDate": "تاريخ أمر الشراء",
+      "advancePct": "نسبة الدفعة المقدمة %",
+      "retentionPct": "نسبة الاحتجاز %",
+      "deliveryAddress": "عنوان التسليم",
+      "deliverySchedule": "جدول التسليم",
+      "deliveryTerms": "شروط التسليم",
+      "paymentTermsText": "شروط الدفع",
+      "specialConditions": "شروط خاصة",
+      "isService": "أمر خدمات (شهادة إنجاز بدلاً من الاستلام)",
+      "save": "حفظ الشروط"
+    },
+    "lines": {
+      "title": "البنود",
+      "inherited": "المورد والبنود والأسعار وبنود الموازنة موروثة من الترسية ولا يمكن تعديلها.",
+      "description": "الوصف",
+      "quantity": "الكمية",
+      "unit": "الوحدة",
+      "unitPrice": "سعر الوحدة",
+      "lineTotal": "إجمالي البند",
+      "budgetLine": "بند الموازنة",
+      "accepted": "المقبول",
+      "total": "الإجمالي"
+    },
+    "budget": {
+      "title": "الأثر على الموازنة",
+      "locked": "المبالغ بسعر الصرف المثبت عند الاعتماد.",
+      "estimate": "تقدير بسعر اليوم؛ يُثبَّت السعر عند اعتماد الأمر.",
+      "budgetLine": "بند الموازنة",
+      "prCommitted": "المرتبط بطلب الشراء",
+      "poAmount": "مبلغ أمر الشراء",
+      "difference": "الفرق",
+      "available": "المتاح"
+    },
+    "acknowledgement": {
+      "title": "تأكيد المورد",
+      "done": "أكّده {name} بتاريخ {date}.",
+      "required": "ارفع النسخة الموقعة من المورد؛ لا يمكن الاستلام قبل ذلك.",
+      "optional": "ارفع النسخة الموقعة من المورد.",
+      "date": "تاريخ التوقيع",
+      "name": "الموقِّع (المورد)",
+      "record": "تسجيل التأكيد"
+    },
+    "receipts": {
+      "title": "الاستلامات",
+      "none": "لم يُستلم شيء بعد."
+    },
+    "actions": {
+      "receive": "استلام البضاعة",
+      "submit": "إرسال للاعتماد",
+      "close": "إغلاق الأمر",
+      "closeTitle": "إغلاق أمر الشراء",
+      "closeDescription": "يُعاد الارتباط المتبقي إلى الموازنة."
+    },
+    "fromAward": {
+      "title": "أوامر الشراء",
+      "createPos": "إنشاء أوامر الشراء",
+      "createContracts": "إنشاء عقود",
+      "none": "لا يوجد أمر شراء بعد.",
+      "draft": "مسودة"
+    }
+  },
   "receiving": {},
   "invoices": {},
   "payments": {},

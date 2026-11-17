@@ -8,6 +8,7 @@ import {
   prChangeBudgetLine,
   prCreate,
   prDraftUpdate,
+  prLineCancelBody,
   prLineParams,
   prListQuery,
   prPrintQuery,
@@ -21,6 +22,7 @@ import {
   type PrChangeBudgetLine,
   type PrCreate,
   type PrDraftUpdate,
+  type PrLineCancelInput,
   type PrListQuery,
   type PrPrintQuery,
   type PrReasonAction,
@@ -163,6 +165,21 @@ export function prsRouter(
     validate({ params: idParam, body: prReasonAction }),
     handle(async (req, res, ctx) => {
       res.json(await workflow(ctx).return(req.params.id!, req.body as PrReasonAction));
+    })
+  );
+
+  router.post(
+    '/prs/:id/lines/:lineId/cancel',
+    requirePermission(PERMISSIONS.PR_CANCEL_APPROVED),
+    validate({ params: prLineParams, body: prLineCancelBody }),
+    handle(async (req, res, ctx) => {
+      res.json(
+        await service(ctx).cancelLine(
+          req.params.id!,
+          req.params.lineId!,
+          req.body as PrLineCancelInput
+        )
+      );
     })
   );
 

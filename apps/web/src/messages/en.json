@@ -1674,7 +1674,101 @@
       "pending": "Not yet notified"
     }
   },
-  "orders": {},
+  "orders": {
+    "title": "Purchase orders",
+    "intro": "Purchase orders and contracts created from approved awards.",
+    "statusFilter": "Filter by status",
+    "allStatuses": "All statuses",
+    "status": {
+      "draft": "Draft",
+      "pending_approval": "Pending approval",
+      "approved": "Approved",
+      "acknowledged": "Acknowledged",
+      "partially_received": "Partially received",
+      "fully_received": "Fully received",
+      "closed": "Closed",
+      "returned": "Returned",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
+    },
+    "number": "Number",
+    "supplier": "Supplier",
+    "analysis": "Analysis",
+    "statusLabel": "Status",
+    "total": "Total",
+    "poDate": "PO date",
+    "draftNumber": "Draft (no number yet)",
+    "empty": "No purchase orders yet.",
+    "kind": {
+      "po": "Purchase order",
+      "contract": "Contract",
+      "service": "Service PO"
+    },
+    "blacklisted": "The supplier was blacklisted after this order was approved.",
+    "closedWith": "Closed: {reason}",
+    "terms": {
+      "title": "Terms",
+      "poDate": "PO date",
+      "advancePct": "Advance %",
+      "retentionPct": "Retention %",
+      "deliveryAddress": "Delivery address",
+      "deliverySchedule": "Delivery schedule",
+      "deliveryTerms": "Delivery terms",
+      "paymentTermsText": "Payment terms",
+      "specialConditions": "Special conditions",
+      "isService": "Service order (completion certificate instead of receipt)",
+      "save": "Save terms"
+    },
+    "lines": {
+      "title": "Lines",
+      "inherited": "Supplier, lines, prices and budget lines come from the award and cannot be edited.",
+      "description": "Description",
+      "quantity": "Quantity",
+      "unit": "Unit",
+      "unitPrice": "Unit price",
+      "lineTotal": "Line total",
+      "budgetLine": "Budget line",
+      "accepted": "Accepted",
+      "total": "Total"
+    },
+    "budget": {
+      "title": "Budget effect",
+      "locked": "Amounts at the rate locked at approval.",
+      "estimate": "Estimate at today’s rate; the rate is locked when the order is approved.",
+      "budgetLine": "Budget line",
+      "prCommitted": "PR committed",
+      "poAmount": "PO amount",
+      "difference": "Difference",
+      "available": "Available"
+    },
+    "acknowledgement": {
+      "title": "Supplier acknowledgement",
+      "done": "Acknowledged by {name} on {date}.",
+      "required": "Upload the copy signed by the supplier; goods cannot be received before.",
+      "optional": "Upload the copy signed by the supplier.",
+      "date": "Signed on",
+      "name": "Signed by (supplier)",
+      "record": "Record acknowledgement"
+    },
+    "receipts": {
+      "title": "Receipts",
+      "none": "Nothing received yet."
+    },
+    "actions": {
+      "receive": "Receive goods",
+      "submit": "Submit for approval",
+      "close": "Close order",
+      "closeTitle": "Close the purchase order",
+      "closeDescription": "The remaining commitment is released back to the budget."
+    },
+    "fromAward": {
+      "title": "Purchase orders",
+      "createPos": "Create purchase orders",
+      "createContracts": "Create contracts",
+      "none": "No purchase order yet.",
+      "draft": "Draft"
+    }
+  },
   "receiving": {},
   "invoices": {},
   "payments": {},

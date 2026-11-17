@@ -68,6 +68,7 @@ import {
 } from '../repositories/pr.repository';
 import type { RequestContext } from '../types/context';
 import { ApprovalRoutingService } from './approval-routing.service';
+import { BudgetService } from './budget.service';
 
 /** Who is calling: the creator checks, office scope and permission-dependent actions. */
 export interface PrActor {
@@ -93,6 +94,8 @@ export interface PrServiceDeps {
   run<T>(fn: (repos: PrRepos, tx: TenantTx) => Promise<T>): Promise<T>;
   storage: AttachmentStorage;
   newId?: () => string;
+  /** split-chain release for cancelled lines (002 FR-038) */
+  budget?: BudgetService;
 }
 
 export function actorOf(ctx: RequestContext): PrActor {
@@ -287,6 +290,7 @@ export class PrService {
           fn(prRepos(tx, ctx.tenantId), tx)
         ),
       storage: new SupabaseAttachmentStorage(ctx),
+      budget: BudgetService.forContext(ctx),
     });
   }
 
@@ -428,6 +432,68 @@ export class PrService {
       }
       await prs.delete(id);
     });
+  }
+
+  /**
+   * POST /prs/:id/lines/:lineId/cancel — an unsourced line of an approved PR (002 FR-038): the
+   * line becomes cancelled with its reason, its amount leaves the PR commitment (split chain,
+   * `cancelled`), and the PR closes when every line is ordered or cancelled.
+   */
+  async cancelLine(
+    prId: string,
+    lineId: string,
+    input: { expectedVersion: number; reason: string }
+  ): Promise<PrDetail> {
+    if (!this.actor.permissions.has(PERMISSIONS.PR_CANCEL_APPROVED)) {
+      throw new AppError('FORBIDDEN', `Missing permission ${PERMISSIONS.PR_CANCEL_APPROVED}`);
+    }
+    const budget = this.deps.budget;
+    if (!budget) throw new AppError('INTERNAL_ERROR', 'Budget service not configured');
+    await this.deps.run(async ({ prs }, tx) => {
+      const pr = await getPr(prs, prId, { lock: true });
+      if (pr.version !== input.expectedVersion) {
+        throw new AppError('VERSION_CONFLICT', 'The record was changed by someone else');
+      }
+      if (pr.status !== 'approved' && pr.status !== 'in_procurement') {
+        throw new AppError('INVALID_STATE', 'Only lines of an approved PR can be cancelled');
+      }
+      const [line] = await tx.sql<
+        { budget_line_id: string | null; amount_grant: string | null; sourcing_status: string }[]
+      >`
+        select budget_line_id, amount_grant::text, sourcing_status from public.pr_line
+        where tenant_id = ${this.actor.tenantId} and pr_id = ${prId} and id = ${lineId}
+        for update`;
+      if (!line) throw new AppError('NOT_FOUND', 'pr_line not found');
+      if (line.sourcing_status !== 'not_sourced') {
+        throw new AppError('INVALID_STATE', 'Only an unsourced line can be cancelled');
+      }
+      await tx.setAuditComment(input.reason);
+      await tx.sql`
+        update public.pr_line set sourcing_status = 'cancelled', cancel_reason = ${input.reason}
+        where tenant_id = ${this.actor.tenantId} and id = ${lineId}`;
+
+      const amount = parseAmount(line.amount_grant ?? '0');
+      if (line.budget_line_id && amount.gt(0)) {
+        const [open] = await tx.sql<{ id: string; amount: string }[]>`
+          select id, amount::text from public.budget_commitment
+          where tenant_id = ${this.actor.tenantId} and source_doc_type = 'PR'
+            and source_doc_id = ${prId} and budget_line_id = ${line.budget_line_id}
+            and status in ('reserved', 'committed')
+          order by cycle desc limit 1`;
+        if (open) {
+          const take = parseAmount(open.amount).lt(amount) ? open.amount : amount.toFixed(2);
+          await budget.splitConsume(tx, open.id, take, 'cancelled');
+        }
+      }
+
+      await tx.sql`
+        update public.purchase_requisition p
+        set status = 'closed', closed_at = now()
+        where p.tenant_id = ${this.actor.tenantId} and p.id = ${prId}
+          and not exists (select 1 from public.pr_line l where l.pr_id = p.id
+                          and l.sourcing_status not in ('ordered', 'cancelled'))`;
+    });
+    return this.getDetail(prId);
   }
 
   /** GET /prs/:id */

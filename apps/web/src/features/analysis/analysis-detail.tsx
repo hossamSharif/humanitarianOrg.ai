@@ -28,6 +28,7 @@ import { StepsView } from '@/features/documents/steps-view';
 import { ErrorText, useLocalizedName } from '@/features/grants/shared';
 import { Link } from '@/i18n/routing';
 import { useApiError } from '@/lib/use-api-error';
+import { useCreatePos, usePurchaseOrders } from '@/features/orders/api';
 import { useAnalysis, useRecordNotices, useSignAnalysis } from './api';
 import { CommitteePanel } from './committee-panel';
 import { ComparisonTable } from './comparison-table';
@@ -155,6 +156,57 @@ function NoticesPanel({ analysis }: { analysis: BidAnalysisDetail }) {
   );
 }
 
+/** After the award: the POs created from it, and creating the missing ones (US6). */
+function OrdersPanel({ analysis }: { analysis: BidAnalysisDetail }) {
+  const t = useTranslations('orders.fromAward');
+  const apiError = useApiError();
+  const localized = useLocalizedName();
+  const { data } = usePurchaseOrders({ bidAnalysisId: analysis.id });
+  const create = useCreatePos(analysis.id);
+  if (analysis.status !== 'approved') return null;
+  const pos = data?.data ?? [];
+  const awarded = new Set(analysis.awardLines.map((l) => l.supplierId));
+  const missing = [...awarded].filter(
+    (s) => !pos.some((p) => p.supplierId === s && p.status !== 'cancelled')
+  );
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <CardTitle className="text-lg">{t('title')}</CardTitle>
+        {missing.length > 0 || (awarded.size === 0 && pos.length === 0) ? (
+          <div className="flex gap-2">
+            <Button size="sm" disabled={create.isPending} onClick={() => create.mutate({})}>
+              {t('createPos')}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={create.isPending}
+              onClick={() => create.mutate({ kind: 'contract' })}
+            >
+              {t('createContracts')}
+            </Button>
+          </div>
+        ) : null}
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {pos.length === 0 ? <p className="text-sm text-muted-foreground">{t('none')}</p> : null}
+        {pos.map((p) => (
+          <div key={p.id} className="flex flex-wrap items-center gap-3">
+            <Link href={`/procurement/pos/${p.id}`} className="hover:underline" dir="ltr">
+              {p.number ?? t('draft')}
+            </Link>
+            <DocStatusBadge status={p.status} namespace="orders.status" />
+            <span>{localized({ nameAr: p.supplierNameAr, nameEn: p.supplierNameEn })}</span>
+          </div>
+        ))}
+        {create.error ? <ErrorText>{apiError(create.error)}</ErrorText> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function AnalysisDetail({ id }: { id: string }) {
   const t = useTranslations('analysis');
   const tc = useTranslations('common');
@@ -220,6 +272,7 @@ export function AnalysisDetail({ id }: { id: string }) {
           signatures={[]}
         />
       ) : null}
+      <OrdersPanel analysis={analysis} />
       <NoticesPanel analysis={analysis} />
       <DocHistoryTimeline slug="bid-analyses" id={analysis.id} />
     </div>
