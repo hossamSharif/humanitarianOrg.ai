@@ -24,10 +24,12 @@ import { grnsRouter } from './grns.routes';
 import { invoicesRouter } from './invoices.routes';
 import { moneyAccountsRouter } from './money-accounts.routes';
 import { paymentRequestsRouter } from './payment-requests.routes';
+import { glAccountsRouter } from './gl-accounts.routes';
+import { periodsRouter } from './periods.routes';
 
 export const API_VERSION = process.env.npm_package_version ?? '0.1.0';
 
-/** `/api/v1` routes that need the tenant context. Feature routers are mounted here (US1â€“US8). */
+/** `/api/v1` routes that need the tenant context. Feature routers are mounted here (US1Ã¢â‚¬â€œUS8). */
 export function tenantRouter(): Router {
   const router = Router();
   router.use(tenantProfileRouter());
@@ -55,6 +57,8 @@ export function tenantRouter(): Router {
   router.use(invoicesRouter());
   router.use(moneyAccountsRouter());
   router.use(paymentRequestsRouter());
+  router.use(glAccountsRouter());
+  router.use(periodsRouter());
   return router;
 }
 

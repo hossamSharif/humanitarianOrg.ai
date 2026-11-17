@@ -37,6 +37,7 @@ export * from './schemas/order';
 export * from './schemas/receipt';
 export * from './schemas/invoice';
 export * from './schemas/payment';
+export * from './schemas/accounting';
 export * from './doc-types';
 export * from './procurement';
 export * from './accounting';

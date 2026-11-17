@@ -1,6 +1,6 @@
 // money_account: bank accounts and cash boxes (002 data-model §6). The read side serves the
-// payment-request picker (US11); the writes arrive with the accounting setup (US12). The ledger
-// account must be a posting asset account of its own (trigger app.money_account_gl_check).
+// payment-request picker (US11), the writes the accounting setup (US12). The ledger account must
+// be a posting asset account of its own (trigger app.money_account_gl_check, unique column).
 import type { MoneyAccountView } from '@ngo/shared';
 import type { TxSql } from '../db/tx';
 import { AppError } from '../middleware/error';
@@ -87,5 +87,53 @@ export class MoneyAccountRepository {
     const account = await this.find(id);
     if (!account) throw new AppError('NOT_FOUND', 'Bank or cash account not found');
     return account;
+  }
+
+  async insert(values: {
+    kind: 'bank' | 'cash';
+    name: string;
+    bankName: string | null;
+    branch: string | null;
+    accountNo: string | null;
+    currency: string;
+    officeId: string;
+    glAccountId: string;
+    custodianUserId: string | null;
+    openingBalance: string;
+    openingDate: string | null;
+  }): Promise<string> {
+    const [row] = await this.sql<{ id: string }[]>`
+      insert into public.money_account
+        (tenant_id, kind, name, bank_name, branch, account_no, currency, office_id,
+         gl_account_id, custodian_user_id, opening_balance, opening_date)
+      values (${this.tenantId}, ${values.kind}, ${values.name}, ${values.bankName},
+              ${values.branch}, ${values.accountNo}, ${values.currency}, ${values.officeId},
+              ${values.glAccountId}, ${values.custodianUserId}, ${values.openingBalance},
+              ${values.openingDate})
+      returning id`;
+    return row!.id;
+  }
+
+  async update(
+    id: string,
+    expectedVersion: number,
+    changes: {
+      name?: string;
+      bank_name?: string;
+      branch?: string | null;
+      account_no?: string;
+      custodian_user_id?: string | null;
+      is_active?: boolean;
+    }
+  ): Promise<void> {
+    const sql = this.sql;
+    const rows = await sql`
+      update public.money_account
+      set ${Object.keys(changes).length ? sql(changes) : sql`updated_at = now()`}
+      where tenant_id = ${this.tenantId} and id = ${id} and version = ${expectedVersion}
+      returning id`;
+    if (rows.length === 0) {
+      throw new AppError('VERSION_CONFLICT', 'The record was changed by someone else');
+    }
   }
 }
