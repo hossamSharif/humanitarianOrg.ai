@@ -20,6 +20,7 @@ import { staffPayeesRouter } from './staff-payees.routes';
 import { rfqsRouter } from './rfqs.routes';
 import { bidAnalysesRouter } from './bid-analyses.routes';
 import { posRouter } from './pos.routes';
+import { grnsRouter } from './grns.routes';
 
 export const API_VERSION = process.env.npm_package_version ?? '0.1.0';
 
@@ -47,6 +48,7 @@ export function tenantRouter(): Router {
   router.use(rfqsRouter());
   router.use(bidAnalysesRouter());
   router.use(posRouter());
+  router.use(grnsRouter());
   return router;
 }
 

@@ -1769,7 +1769,82 @@
       "draft": "مسودة"
     }
   },
-  "receiving": {},
+  "receiving": {
+    "title": "الاستلام",
+    "intro": "مذكرات استلام البضائع مقابل أوامر الشراء المعتمدة.",
+    "statusFilter": "تصفية حسب الحالة",
+    "allStatuses": "كل الحالات",
+    "status": {
+      "draft": "مسودة",
+      "completed": "مكتمل",
+      "cancelled": "ملغى"
+    },
+    "number": "رقم مذكرة الاستلام",
+    "po": "أمر الشراء",
+    "supplier": "المورد",
+    "statusLabel": "الحالة",
+    "receivedDate": "تاريخ الاستلام",
+    "empty": "لا توجد مذكرات استلام بعد.",
+    "history": "السجل",
+    "cancel": "إلغاء المذكرة",
+    "cancelTitle": "إلغاء مذكرة الاستلام",
+    "cancelDescription": "لا تُلغى إلا المذكرة المسودة؛ ويبقى رقمها مستخدماً.",
+    "cancelledWith": "أُلغيت: {reason}",
+    "toReceive": {
+      "title": "بانتظار البضاعة",
+      "receive": "استلام"
+    },
+    "create": {
+      "title": "استلام البضاعة",
+      "inherited": "المورد ورقم أمر الشراء موروثان من الأمر ولا يمكن تغييرهما.",
+      "delivery": "التسليم",
+      "deliveryNoteNo": "رقم إشعار التسليم",
+      "supplierInvoiceNo": "رقم فاتورة المورد",
+      "shipmentType": "الشحنة",
+      "shipment": {
+        "partial": "جزئية",
+        "final": "نهائية"
+      },
+      "include": "تضمين هذا البند",
+      "save": "إنشاء مذكرة الاستلام",
+      "choosePo": "افتح أمر شراء واختر «استلام البضاعة»."
+    },
+    "lines": {
+      "title": "البنود",
+      "description": "الوصف",
+      "ordered": "المطلوب",
+      "remaining": "المتبقي للاستلام",
+      "delivered": "المسلَّم",
+      "accepted": "المقبول",
+      "rejected": "المرفوض",
+      "rejectReason": "سبب الرفض",
+      "condition": "الحالة",
+      "asset": "أصل",
+      "returned": "أُعيد للمورد",
+      "returnedOn": "تاريخ الإرجاع",
+      "recordReturn": "تسجيل الإرجاع",
+      "yes": "نعم"
+    },
+    "signatures": {
+      "title": "التوقيعات",
+      "twoPeople": "يجب أن يكون المستلم والفاحص شخصين مختلفين.",
+      "received": "المستلم",
+      "inspected": "الفاحص",
+      "sign_received": "التوقيع كمستلم",
+      "sign_inspected": "التوقيع كفاحص",
+      "pending": "لم يُوقَّع بعد"
+    },
+    "rating": {
+      "open": "تقييم المورد",
+      "title": "تقييم المورد",
+      "description": "استُلم الأمر بالكامل. قيّم المورد من 1 إلى 5 (مرة واحدة لكل أمر).",
+      "onTime": "الالتزام بالموعد",
+      "quality": "الجودة",
+      "documentation": "المستندات",
+      "comment": "ملاحظة",
+      "save": "حفظ التقييم"
+    }
+  },
   "invoices": {},
   "payments": {},
   "vouchers": {},

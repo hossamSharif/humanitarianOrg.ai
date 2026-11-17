@@ -1769,7 +1769,82 @@
       "draft": "Draft"
     }
   },
-  "receiving": {},
+  "receiving": {
+    "title": "Receiving",
+    "intro": "Goods received notes against approved purchase orders.",
+    "statusFilter": "Filter by status",
+    "allStatuses": "All statuses",
+    "status": {
+      "draft": "Draft",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "number": "GRN number",
+    "po": "Purchase order",
+    "supplier": "Supplier",
+    "statusLabel": "Status",
+    "receivedDate": "Received on",
+    "empty": "No goods received notes yet.",
+    "history": "History",
+    "cancel": "Cancel GRN",
+    "cancelTitle": "Cancel the GRN",
+    "cancelDescription": "Only a draft GRN can be cancelled; its number stays used.",
+    "cancelledWith": "Cancelled: {reason}",
+    "toReceive": {
+      "title": "Waiting for goods",
+      "receive": "Receive"
+    },
+    "create": {
+      "title": "Receive goods",
+      "inherited": "The supplier and the purchase order number come from the PO and cannot be changed.",
+      "delivery": "Delivery",
+      "deliveryNoteNo": "Delivery note no.",
+      "supplierInvoiceNo": "Supplier invoice no.",
+      "shipmentType": "Shipment",
+      "shipment": {
+        "partial": "Partial",
+        "final": "Final"
+      },
+      "include": "Include this line",
+      "save": "Create GRN",
+      "choosePo": "Open a purchase order and choose “Receive goods”."
+    },
+    "lines": {
+      "title": "Lines",
+      "description": "Description",
+      "ordered": "Ordered",
+      "remaining": "To receive",
+      "delivered": "Delivered",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "rejectReason": "Reject reason",
+      "condition": "Condition",
+      "asset": "Asset",
+      "returned": "Returned to supplier",
+      "returnedOn": "Returned on",
+      "recordReturn": "Record return",
+      "yes": "Yes"
+    },
+    "signatures": {
+      "title": "Signatures",
+      "twoPeople": "Received By and Inspected By must be two different people.",
+      "received": "Received By",
+      "inspected": "Inspected By",
+      "sign_received": "Sign as Received By",
+      "sign_inspected": "Sign as Inspected By",
+      "pending": "Not signed yet"
+    },
+    "rating": {
+      "open": "Rate the supplier",
+      "title": "Supplier rating",
+      "description": "The order is fully received. Rate the supplier from 1 to 5 (once per order).",
+      "onTime": "On-time delivery",
+      "quality": "Quality",
+      "documentation": "Documentation",
+      "comment": "Comment",
+      "save": "Save rating"
+    }
+  },
   "invoices": {},
   "payments": {},
   "vouchers": {},
