@@ -1483,6 +1483,73 @@
         "DRAFT": "DRAFT",
         "CANCELLED": "CANCELLED"
       }
+    },
+    "receipts": {
+      "title": "Quotations received",
+      "add": "Log a receipt",
+      "supplier": "Supplier",
+      "chooseSupplier": "Choose an invited supplier",
+      "receivedOn": "Received on",
+      "receivedAt": "Time received ({timeZone})",
+      "receivedAtShort": "Received",
+      "receivedBy": "Received by",
+      "status": "Status",
+      "log": "Log receipt",
+      "noPricesNote": "Only the receipt is recorded now. Prices, terms and the scanned quotation are entered after the opening.",
+      "empty": "No quotation received yet.",
+      "statuses": {
+        "logged": "Received",
+        "replaced": "Replaced",
+        "late": "Late",
+        "late_accepted": "Late — accepted",
+        "withdrawn": "Withdrawn",
+        "disqualified": "Disqualified"
+      }
+    },
+    "opening": {
+      "open": "Record the opening",
+      "beforeDeadline": "The opening can be recorded once the submission deadline has passed.",
+      "title": "Record the opening",
+      "intro": "The quotations are opened in front of the attendees. Prices and terms can be entered only after this.",
+      "place": "Place",
+      "notes": "Notes",
+      "attendees": "Attendees",
+      "attendee": "Attendee {n}",
+      "external": "Someone outside the system",
+      "externalName": "Name of attendee {n}",
+      "function": "Function of attendee {n}",
+      "addAttendee": "Add attendee",
+      "removeAttendee": "Remove attendee",
+      "minimum": "At least {count} attendees.",
+      "lateOffers": "Late quotations",
+      "lateIntro": "A late quotation is excluded unless you accept it here with a reason.",
+      "lateReason": "Reason to accept (leave empty to exclude)",
+      "confirm": "Record opening",
+      "openedAt": "Opened {at}",
+      "tooFew": "Only {count} valid quotations against a minimum of {required}. Evaluation needs an approved waiver, or re-issue the RFQ."
+    },
+    "terms": {
+      "title": "Quotation prices and terms",
+      "saved": "Quotation saved.",
+      "none": "No valid quotation to enter.",
+      "currency": "Currency",
+      "deliveryDays": "Delivery (days)",
+      "validityDays": "Validity (days)",
+      "paymentTerms": "Payment terms",
+      "notChecked": "Not checked",
+      "results": {
+        "pass": "Meets",
+        "fail": "Does not meet"
+      },
+      "line": "Line",
+      "quantity": "Quantity offered",
+      "quantityFor": "Quantity offered for line {line}",
+      "unitPrice": "Unit price",
+      "unitPriceFor": "Unit price for line {line}",
+      "lineTotal": "Line total",
+      "uploadScan": "Upload scanned quotation",
+      "replaceScan": "Replace scan",
+      "viewScan": "View scan"
     }
   },
   "analysis": {},

@@ -3,6 +3,12 @@ import {
   createRfqBody,
   idParam,
   issueRfqBody,
+  offerParams,
+  offerReceiptBody,
+  offerScanParams,
+  offerScanUpload,
+  offerTermsBody,
+  openSourcingBody,
   rfqListQuery,
   rfqPrintQuery,
   sourceablePrLinesQuery,
@@ -10,6 +16,10 @@ import {
   updateRfqBody,
   type CreateRfqInput,
   type IssueRfqInput,
+  type OfferReceiptInput,
+  type OfferScanUploadInput,
+  type OfferTermsInput,
+  type OpenSourcingInput,
   type RfqListQuery,
   type RfqPrintQuery,
   type SourceablePrLinesQuery,
@@ -20,17 +30,20 @@ import { Router } from 'express';
 import { requireAnyPermission, requirePermission } from '../middleware/permission';
 import { validate } from '../middleware/validate';
 import { DocHistoryService } from '../services/doc-history.service';
+import { OpeningService } from '../services/opening.service';
 import { RfqPrintService } from '../services/print/rfq-print.service';
 import { SourcingService } from '../services/sourcing.service';
 import { handle, type ServiceFactory } from './route-helpers';
 
 /**
- * Requests for quotation (002 US3, contracts/rest-api.md "RFQs and tenders"): read with
- * procurement:read (or rfq:create); draft, edit, cancel and re-issue with rfq:create; issue
- * with rfq:issue. Routes validate and delegate; the sourcing service holds every rule.
+ * Requests for quotation (002 US3, US4, contracts/rest-api.md "RFQs and tenders"): read with
+ * procurement:read (or rfq:create); draft, edit, cancel, re-issue and receipts with rfq:create;
+ * issue with rfq:issue; the opening, terms, prices and scans with rfq:open. Routes validate and
+ * delegate; the sourcing and opening services hold every rule.
  */
 export function rfqsRouter(
   service = new SourcingService('rfq'),
+  opening = new OpeningService('rfq'),
   print: ServiceFactory<RfqPrintService> = RfqPrintService.forContext,
   history: ServiceFactory<DocHistoryService> = DocHistoryService.forContext
 ): Router {
@@ -114,6 +127,93 @@ export function rfqsRouter(
       res
         .status(201)
         .json(await service.reissue(ctx, req.params.id!, req.body as SourcingReasonInput));
+    })
+  );
+
+  // --- receipts, opening, sealed terms (US4) -------------------------------------------------
+
+  const canOpen = requirePermission(PERMISSIONS_002.RFQ_OPEN);
+
+  router.post(
+    '/rfqs/:id/offers',
+    canCreate,
+    validate({ params: idParam, body: offerReceiptBody }),
+    handle(async (req, res, ctx) => {
+      res
+        .status(201)
+        .json(await opening.logReceipt(ctx, req.params.id!, req.body as OfferReceiptInput));
+    })
+  );
+
+  router.post(
+    '/rfqs/:id/open',
+    canOpen,
+    validate({ params: idParam, body: openSourcingBody }),
+    handle(async (req, res, ctx) => {
+      res.json(await opening.open(ctx, req.params.id!, req.body as OpenSourcingInput));
+    })
+  );
+
+  router.get(
+    '/rfqs/:id/offer-terms',
+    canRead,
+    validate({ params: idParam }),
+    handle(async (req, res, ctx) => {
+      res.json({ data: await opening.listTerms(ctx, req.params.id!) });
+    })
+  );
+
+  router.put(
+    '/rfqs/:id/offers/:offerId/terms',
+    canOpen,
+    validate({ params: offerParams, body: offerTermsBody }),
+    handle(async (req, res, ctx) => {
+      res.json(
+        await opening.enterTerms(
+          ctx,
+          req.params.id!,
+          req.params.offerId!,
+          req.body as OfferTermsInput
+        )
+      );
+    })
+  );
+
+  router.post(
+    '/rfqs/:id/offers/:offerId/scan-upload-url',
+    canOpen,
+    validate({ params: offerParams, body: offerScanUpload }),
+    handle(async (req, res, ctx) => {
+      res
+        .status(201)
+        .json(
+          await opening.scanUploadUrl(
+            ctx,
+            req.params.id!,
+            req.params.offerId!,
+            req.body as OfferScanUploadInput
+          )
+        );
+    })
+  );
+
+  router.post(
+    '/rfqs/:id/offers/:offerId/scan/:attId/complete',
+    canOpen,
+    validate({ params: offerScanParams }),
+    handle(async (req, res, ctx) => {
+      res.json(
+        await opening.completeScan(ctx, req.params.id!, req.params.offerId!, req.params.attId!)
+      );
+    })
+  );
+
+  router.get(
+    '/rfqs/:id/offers/:offerId/scan-url',
+    canRead,
+    validate({ params: offerParams }),
+    handle(async (req, res, ctx) => {
+      res.json(await opening.scanUrl(ctx, req.params.id!, req.params.offerId!));
     })
   );
 

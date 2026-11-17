@@ -4,7 +4,13 @@
 import type {
   CreateRfqInput,
   DocHistoryEntry,
+  DocAttachmentUploadTarget,
   IssueRfqInput,
+  OfferReceiptInput,
+  OfferScanUploadInput,
+  OfferTermsInput,
+  OfferTermsView,
+  OpenSourcingInput,
   ListResponse,
   PrintLocale,
   RfqPrintData,
@@ -15,7 +21,9 @@ import type {
   UpdateRfqInput,
 } from '@ngo/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { DOC_ATTACHMENT_BUCKET } from '@ngo/shared';
 import { api } from '@/lib/api-client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { queryKeys } from '@/lib/query-keys';
 
 export interface RfqFilters {
@@ -107,4 +115,76 @@ export function useReissueRfq(id: string) {
 
 export function rfqPrintData(id: string, supplierId: string, locale: PrintLocale) {
   return api.get<RfqPrintData>(`/rfqs/${id}/print`, { query: { supplierId, locale } });
+}
+
+// --- receipts, opening, sealed terms (US4) ----------------------------------------------------
+
+export function useLogReceipt(id: string) {
+  return useRfqWrite((input: OfferReceiptInput) =>
+    api.post<SourcingEventDetail>(`/rfqs/${id}/offers`, input)
+  );
+}
+
+export function useOpenRfq(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: OpenSourcingInput) =>
+      api.post<SourcingEventDetail>(`/rfqs/${id}/open`, input),
+    onSuccess: (event) => {
+      queryClient.setQueryData(queryKeys.sourcing.detail(event.id), event);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sourcing.all });
+    },
+  });
+}
+
+/** Terms and prices of every offer; empty while sealed (RLS). */
+export function useOfferTerms(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.sourcing.terms(id),
+    queryFn: async () =>
+      (await api.get<{ data: OfferTermsView[] }>(`/rfqs/${id}/offer-terms`)).data,
+    enabled,
+  });
+}
+
+export function useEnterTerms(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ offerId, input }: { offerId: string; input: OfferTermsInput }) =>
+      api.put<OfferTermsView>(`/rfqs/${id}/offers/${offerId}/terms`, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sourcing.terms(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sourcing.detail(id) });
+    },
+  });
+}
+
+/** Upload URL (sealed until the opening), the file to storage, then link it to the offer. */
+export function useUploadOfferScan(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ offerId, file }: { offerId: string; file: File }) => {
+      const body: OfferScanUploadInput = {
+        fileName: file.name,
+        mimeType: file.type as OfferScanUploadInput['mimeType'],
+        sizeBytes: file.size,
+      };
+      const target = await api.post<DocAttachmentUploadTarget>(
+        `/rfqs/${id}/offers/${offerId}/scan-upload-url`,
+        body
+      );
+      const { error } = await getSupabaseBrowserClient()
+        .storage.from(DOC_ATTACHMENT_BUCKET)
+        .uploadToSignedUrl(target.path, target.token, file, { contentType: file.type });
+      if (error) throw error;
+      return api.post<OfferTermsView>(
+        `/rfqs/${id}/offers/${offerId}/scan/${target.attachmentId}/complete`
+      );
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.sourcing.terms(id) }),
+  });
+}
+
+export async function offerScanUrl(id: string, offerId: string): Promise<string> {
+  return (await api.get<{ url: string }>(`/rfqs/${id}/offers/${offerId}/scan-url`)).url;
 }

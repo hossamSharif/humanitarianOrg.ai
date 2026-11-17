@@ -226,7 +226,11 @@ export class SourcingEventRepository {
 
   private select(where: Fragment, tail: Fragment = this.sql``) {
     return this.sql<Row[]>`
-      select e.id, e.kind, e.number, e.status, e.title, e.grant_id, g.code as grant_code,
+      select e.id, e.kind, e.number,
+             -- 'closed' is derived while issued and past the deadline (data-model §4)
+             case when e.status = 'issued' and now() > e.submission_deadline then 'closed'
+                  else e.status end as status,
+             e.title, e.grant_id, g.code as grant_code,
              e.office_id, e.issue_date::text, e.submission_deadline, e.delivery_place,
              e.delivery_terms, e.payment_terms, e.currency::text, e.offer_validity_days,
              e.split_award_allowed, e.required_method, e.required_min_quotations,
@@ -265,7 +269,16 @@ export class SourcingEventRepository {
     const rows = await this.select(
       sql`
         and e.kind = ${filter.kind}
-        ${filter.status ? sql`and e.status = ${filter.status}` : sql``}
+        ${
+          filter.status === 'closed'
+            ? sql`and (e.status = 'closed'
+                       or (e.status = 'issued' and now() > e.submission_deadline))`
+            : filter.status === 'issued'
+              ? sql`and e.status = 'issued' and not (now() > e.submission_deadline)`
+              : filter.status
+                ? sql`and e.status = ${filter.status}`
+                : sql``
+        }
         ${filter.grantId ? sql`and e.grant_id = ${filter.grantId}` : sql``}
         ${like ? sql`and (e.title ilike ${like} or e.number ilike ${like})` : sql``}`,
       sql`order by ${sql.unsafe(column)} ${sql.unsafe(sort.direction)} nulls last, e.id
@@ -366,6 +379,18 @@ export class SourcingEventRepository {
       update public.sourcing_event
       set status = 'cancelled', cancelled_at = now(), cancel_reason = ${reason}
       where tenant_id = ${this.tenantId} and id = ${id}`;
+  }
+
+  /**
+   * The opening command (research D3): the only writer of opened_at, flagged to the guard
+   * trigger by a transaction-local setting.
+   */
+  async markOpened(id: string, openedAt: Date): Promise<void> {
+    await this.sql`select set_config('app.opening_command', 'on', true)`;
+    await this.sql`
+      update public.sourcing_event set status = 'opened', opened_at = ${openedAt}
+      where tenant_id = ${this.tenantId} and id = ${id}`;
+    await this.sql`select set_config('app.opening_command', '', true)`;
   }
 
   async setStatus(id: string, status: SourcingEventStatus): Promise<void> {

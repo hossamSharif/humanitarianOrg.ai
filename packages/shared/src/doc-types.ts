@@ -283,6 +283,8 @@ export type DocAttachmentPurpose = (typeof DOC_ATTACHMENT_PURPOSES)[number];
 
 /** Purposes added through their action endpoints, so allowed after the document left draft. */
 export const ACTION_ATTACHMENT_PURPOSES: readonly DocAttachmentPurpose[] = [
+  // the scanned quotation, uploaded after the opening (sealed until then, research D3)
+  'offer_scan',
   'po_acknowledgement',
   'received_by_copy',
   'receipt',

@@ -28,7 +28,9 @@ import { useRfq, useRfqHistory } from './api';
 import { CriteriaEditor } from './criteria-editor';
 import { InvitationsEditor } from './invitations-editor';
 import { MethodPanel } from './method-panel';
+import { OfferTermsPanel } from './offer-terms-panel';
 import { RfqPrintButton } from './print/rfq-print-button';
+import { ReceiptsPanel } from './receipts-panel';
 import { RfqActions } from './rfq-actions';
 import { RfqDraftForm } from './rfq-draft-form';
 
@@ -173,6 +175,9 @@ export function RfqDetail({ id }: { id: string }) {
         editable={editable}
         renderActions={(supplierId) => <RfqPrintButton rfqId={event.id} supplierId={supplierId} />}
       />
+
+      <ReceiptsPanel event={event} />
+      <OfferTermsPanel event={event} />
 
       <HistoryTimeline data={history.data} error={history.error} isPending={history.isPending} />
     </div>

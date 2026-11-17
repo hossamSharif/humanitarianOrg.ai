@@ -36,6 +36,10 @@ import { AppError } from '../middleware/error';
 import { DocSignatureRepository } from '../repositories/doc-signature.repository';
 import { MethodBandRepository } from '../repositories/method-band.repository';
 import { NumberingRepository } from '../repositories/numbering.repository';
+import { OfferLinePriceRepository } from '../repositories/offer-line-price.repository';
+import { OfferTermsRepository } from '../repositories/offer-terms.repository';
+import { OfferRepository } from '../repositories/offer.repository';
+import { OpeningRecordRepository } from '../repositories/opening-record.repository';
 import { ProcurementSettingRepository } from '../repositories/procurement-setting.repository';
 import { SourcingCriterionRepository } from '../repositories/sourcing-criterion.repository';
 import {
@@ -58,6 +62,10 @@ export interface SourcingRepos {
   criteria: SourcingCriterionRepository;
   invitations: SourcingInvitationRepository;
   waivers: WaiverRepository;
+  offers: OfferRepository;
+  terms: OfferTermsRepository;
+  prices: OfferLinePriceRepository;
+  openings: OpeningRecordRepository;
   bands: MethodBandRepository;
   settings: ProcurementSettingRepository;
   signatures(docType: 'RFQ' | 'TND'): DocSignatureRepository;
@@ -89,6 +97,10 @@ export const defaultSourcingDeps: SourcingServiceDeps = {
         criteria: new SourcingCriterionRepository(tx.sql, ctx.tenantId),
         invitations: new SourcingInvitationRepository(tx.sql, ctx.tenantId),
         waivers: new WaiverRepository(tx.sql, ctx.tenantId),
+        offers: new OfferRepository(tx.sql, ctx.tenantId),
+        terms: new OfferTermsRepository(tx.sql, ctx.tenantId),
+        prices: new OfferLinePriceRepository(tx.sql, ctx.tenantId),
+        openings: new OpeningRecordRepository(tx.sql, ctx.tenantId),
         bands: new MethodBandRepository(tx.sql, ctx.tenantId),
         settings: new ProcurementSettingRepository(tx.sql, ctx.tenantId),
         signatures: (docType) => new DocSignatureRepository(tx.sql, ctx.tenantId, docType),
@@ -220,12 +232,17 @@ export class SourcingService {
   /** The event with its lines, criteria, invitations and the caller's actions. */
   async detail(repos: SourcingRepos, id: string): Promise<SourcingEventDetail> {
     const event = await repos.events.get(id, this.kind);
-    const [lines, criteria, invitations, acknowledged] = await Promise.all([
+    const [lines, criteria, invitations, acknowledged, offers, opening] = await Promise.all([
       repos.lines.list(id),
       repos.criteria.list(id),
       repos.invitations.list(id),
       repos.events.splittingAcknowledged(id, this.docType),
+      repos.offers.list(id),
+      repos.openings.find(id),
     ]);
+    const validOfferCount = offers.filter(
+      (o) => o.status === 'logged' || o.status === 'late_accepted'
+    ).length;
     const { methodSnapshot, requiredMinQuotations, ...header } = event;
     return {
       ...header,
@@ -241,8 +258,10 @@ export class SourcingService {
       lines,
       criteria,
       invitations,
-      offers: [],
-      opening: null,
+      offers,
+      opening,
+      validOfferCount,
+      needsWaiverOrReissue: event.openedAt !== null && validOfferCount < requiredMinQuotations,
       analysisId: null,
       availableActions: this.actionsFor(repos.ctx, event),
     };
@@ -256,6 +275,17 @@ export class SourcingService {
       if (ctx.permissions.has(PERMISSIONS_002.RFQ_ISSUE)) actions.push('issue');
     }
     if (LIVE_STATUSES.has(event.status) && create) actions.push('cancel', 'reissue');
+    const beforeOpening = event.status === 'issued' || event.status === 'closed';
+    // receipts only; late ones are logged as late (research D3)
+    if (beforeOpening && create) actions.push('log_receipt');
+    if (beforeOpening && ctx.permissions.has(PERMISSIONS_002.RFQ_OPEN)) actions.push('open');
+    if (
+      event.openedAt &&
+      event.status === 'opened' &&
+      ctx.permissions.has(PERMISSIONS_002.RFQ_OPEN)
+    ) {
+      actions.push('enter_terms');
+    }
     return actions;
   }
 

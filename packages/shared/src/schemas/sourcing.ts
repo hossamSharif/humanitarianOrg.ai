@@ -12,6 +12,7 @@ import {
   type ProcurementMethod,
 } from '../procurement/method';
 import { currencyCode, expectedVersion, isoDate, listQuery, reason, uuid } from './common';
+import { ATTACHMENT_MIME_TYPES, MAX_ATTACHMENT_BYTES } from './pr';
 import type { SupplierCompliance, SupplierStatus } from './supplier';
 
 export const SOURCING_KINDS = ['rfq', 'tender'] as const;
@@ -214,6 +215,101 @@ export const sourcingReasonBody = z.object({ expectedVersion, reason }).strict()
 export type SourcingReasonInput = z.input<typeof sourcingReasonBody>;
 
 // ---------------------------------------------------------------------------------------------
+// Receipts, opening, terms (US4)
+// ---------------------------------------------------------------------------------------------
+
+/** POST /rfqs/:id/offers — the receipt only; no price, terms or file before the opening. */
+export const offerReceiptBody = z
+  .object({
+    supplierId: uuid,
+    receivedAt: isoDateTime,
+    receivedById: uuid,
+  })
+  .strict();
+export type OfferReceiptInput = z.input<typeof offerReceiptBody>;
+
+export const openingAttendeeInput = z
+  .object({
+    userId: uuid.optional(),
+    externalName: z.string().trim().min(1).max(200).optional(),
+    function: z.string().trim().min(1).max(100),
+  })
+  .strict()
+  .refine((a) => (a.userId === undefined) !== (a.externalName === undefined), {
+    message: 'An attendee is a user or an external name',
+    path: ['userId'],
+  });
+export type OpeningAttendeeInput = z.input<typeof openingAttendeeInput>;
+
+/** POST /rfqs/:id/open */
+export const openSourcingBody = z
+  .object({
+    expectedVersion,
+    place: text(300),
+    notes: text(2000),
+    attendees: z.array(openingAttendeeInput).min(1).max(30),
+    acceptLate: z
+      .array(z.object({ offerId: uuid, reason }).strict())
+      .max(50)
+      .default([]),
+  })
+  .strict();
+export type OpenSourcingInput = z.input<typeof openSourcingBody>;
+
+export const ESSENTIAL_RESULTS = ['pass', 'fail'] as const;
+export type EssentialResult = (typeof ESSENTIAL_RESULTS)[number];
+
+/** PUT /rfqs/:id/offers/:offerId/terms — after the opening only. */
+export const offerTermsBody = z
+  .object({
+    currency: currencyCode,
+    deliveryDays: z.union([z.number().int().min(0).max(3650), z.null()]).optional(),
+    validityDays: z.union([z.number().int().min(0).max(3650), z.null()]).optional(),
+    paymentTerms: text(2000),
+    essentialCompliance: z
+      .record(uuid, z.object({ result: z.enum(ESSENTIAL_RESULTS), note: text(500) }).strict())
+      .default({}),
+    linePrices: z
+      .array(
+        z
+          .object({
+            sourcingLineId: uuid,
+            unitPrice: z
+              .string()
+              .trim()
+              .regex(
+                /^\d{1,16}(\.\d{1,2})?$/,
+                'Must be a non-negative amount with at most 2 decimals'
+              ),
+            quantity: z
+              .string()
+              .trim()
+              .regex(/^\d{1,15}(\.\d{1,3})?$/, 'Must be a quantity with at most 3 decimals')
+              .refine((v) => /[1-9]/.test(v), 'Must be greater than zero')
+              .optional(),
+          })
+          .strict()
+      )
+      .max(200),
+  })
+  .strict();
+export type OfferTermsInput = z.input<typeof offerTermsBody>;
+
+export const offerParams = z.object({ id: uuid, offerId: uuid });
+
+/** POST /rfqs/:id/offers/:offerId/scan-upload-url — the scanned quotation, after the opening. */
+export const offerScanUpload = z
+  .object({
+    fileName: z.string().trim().min(1).max(255),
+    mimeType: z.enum(ATTACHMENT_MIME_TYPES),
+    sizeBytes: z.number().int().min(1).max(MAX_ATTACHMENT_BYTES),
+  })
+  .strict();
+export type OfferScanUploadInput = z.input<typeof offerScanUpload>;
+
+export const offerScanParams = z.object({ id: uuid, offerId: uuid, attId: uuid });
+
+// ---------------------------------------------------------------------------------------------
 // Responses
 // ---------------------------------------------------------------------------------------------
 
@@ -374,8 +470,26 @@ export interface SourcingEventDetail extends SourcingEventSummary {
   invitations: SourcingInvitationView[];
   offers: OfferReceiptView[];
   opening: OpeningView | null;
+  /** valid offers (logged or accepted late) */
+  validOfferCount: number;
+  /** opened with fewer valid offers than the minimum: a waiver or a re-issue is needed (FR-022) */
+  needsWaiverOrReissue: boolean;
   analysisId: string | null;
   availableActions: SourcingAction[];
+}
+
+/** Sealed terms and prices of one offer; readable only after the opening (RLS). */
+export interface OfferTermsView {
+  offerId: string;
+  currency: string;
+  deliveryDays: number | null;
+  validityDays: number | null;
+  paymentTerms: string | null;
+  essentialCompliance: Record<string, { result: EssentialResult; note: string | null }>;
+  scanAttachmentId: string | null;
+  linePrices: { sourcingLineId: string; unitPrice: string; quantity: string; lineTotal: string }[];
+  total: string;
+  version: number;
 }
 
 // ---------------------------------------------------------------------------------------------
