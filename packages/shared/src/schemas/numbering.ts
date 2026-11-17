@@ -1,6 +1,7 @@
 // Document numbering (FR-004, research R6): `{prefix}{sep}{OFFICE}{sep}{YYYY}{sep}{seq}` →
 // PR-MAD-2026-0010. Changes apply to future numbers only (FR-005).
 import { z } from 'zod';
+import type { DocTypeCode } from '../doc-types';
 
 export const DOC_TYPES = ['PR'] as const;
 export const docType = z.enum(DOC_TYPES);
@@ -30,7 +31,7 @@ export interface NumberingPreviewParts {
 }
 
 export interface NumberingConfigResponse extends NumberingConfigInput {
-  docType: DocType;
+  docType: DocTypeCode;
   /** next number for the office (first active office when none is given), e.g. PR-MAD-2026-0001 */
   preview: string;
   /** what `preview` was built from, so a form can re-format it live while editing */

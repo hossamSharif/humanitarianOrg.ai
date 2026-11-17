@@ -1,7 +1,9 @@
 // Budget lines and their derived figures (FR-012–FR-014, research R5), plus the commitment
 // primitives the PR workflow uses inside its transaction (US4–US6): check availability, reserve,
 // commit, release and move a reservation. Available = Budget − Reserved − Committed − Actual;
-// Actual is 0 until the Payments feature.
+// Actual is 0 until the Payments feature. 002 (research D2) adds the same primitives for any
+// source document, and the split chain: partial consumption releases the open row and carries
+// the remainder in a new row that supersedes it.
 import {
   Decimal,
   parseAmount,
@@ -27,6 +29,14 @@ import {
   type ReleaseReason,
 } from '../repositories/budget-line.repository';
 import { GrantRepository } from '../repositories/grant.repository';
+import {
+  SourceCommitmentRepository,
+  type CommitmentRate,
+  type CommitmentSource,
+  type SourceCommitmentRow,
+  type SourceCommitmentStore,
+  type SourceReleaseReason,
+} from '../repositories/source-commitment.repository';
 import type { RequestContext } from '../types/context';
 
 export interface BudgetDeps {
@@ -35,6 +45,13 @@ export interface BudgetDeps {
   txStore: BudgetTxStore;
   /** Opens the tenant transaction (withTenantTx) for amount edits. */
   runTx<T>(fn: (tx: TenantTx) => Promise<T>): Promise<T>;
+  /** budget_commitment rows of non-PR sources (002); needed by the source-document primitives */
+  sources?: SourceCommitmentStore;
+}
+
+/** An amount for one budget line of a source document, in the grant currency. */
+export interface SourceAmount extends LineAmount {
+  sourceLineId?: string | null;
 }
 
 /** Amount to hold on one budget line, in the grant currency. */
@@ -105,6 +122,7 @@ export class BudgetService {
       lines: new BudgetLineRepository(ctx),
       txStore: new BudgetTxRepository(ctx),
       runTx: (fn) => withTenantTx(ctx, fn),
+      sources: new SourceCommitmentRepository(ctx.tenantId),
     });
   }
 
@@ -390,6 +408,248 @@ export class BudgetService {
           status: 'reserved',
         });
     return [moved, target];
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Source-document primitives (002, research D2) — called inside the document's transaction
+  // -------------------------------------------------------------------------------------------
+
+  private get sources(): SourceCommitmentStore {
+    if (!this.deps.sources) throw new Error('BudgetService: no source commitment store');
+    return this.deps.sources;
+  }
+
+  /**
+   * Locks the lines (ascending id) and returns every line whose requested amount exceeds
+   * Available, the source's own open holds not counting as used. Empty = it fits.
+   */
+  async shortfallFor(
+    tx: TenantTx,
+    amounts: readonly LineAmount[],
+    exclude?: CommitmentSource
+  ): Promise<BudgetShortfallLine[]> {
+    if (exclude?.docType === 'PR') {
+      return (await this.checkAvailability(tx, amounts, { excludePrId: exclude.docId })).shortfalls;
+    }
+    const wanted = aggregate(amounts);
+    const ids = wanted.map((w) => w.budgetLineId);
+    const locked = new Map(
+      (await this.deps.txStore.lockLines(tx, ids)).map((l): [string, LockedBudgetLine] => [l.id, l])
+    );
+    const missing = ids.filter((id) => !locked.has(id));
+    if (missing.length) throw new AppError('NOT_FOUND', `budget_line not found: ${missing[0]}`);
+
+    const usage = await this.sources.usage(tx, ids, exclude);
+    const shortfalls: BudgetShortfallLine[] = [];
+    for (const w of wanted) {
+      const line = locked.get(w.budgetLineId)!;
+      const available = parseAmount(deriveFigures(line.budgetAmount, usage.get(line.id)).available);
+      const requested = parseAmount(w.amount);
+      if (requested.greaterThan(available)) {
+        shortfalls.push({
+          budgetLineId: line.id,
+          code: line.code,
+          requested: fixed2(requested),
+          available: fixed2(available),
+          shortfall: fixed2(requested.minus(available)),
+          currency: line.currency,
+          prLineIds: w.prLineIds ?? [],
+        });
+      }
+    }
+    return shortfalls;
+  }
+
+  private async assertFits(
+    tx: TenantTx,
+    amounts: readonly LineAmount[],
+    source: CommitmentSource
+  ): Promise<void> {
+    const shortfalls = await this.shortfallFor(tx, amounts, source);
+    if (shortfalls.length) {
+      throw new AppError('BUDGET_EXCEEDED', 'The amount exceeds the available budget', {
+        lines: shortfalls,
+      });
+    }
+  }
+
+  private async insertAll(
+    tx: TenantTx,
+    source: CommitmentSource,
+    cycle: number,
+    amounts: readonly SourceAmount[],
+    status: 'reserved' | 'committed',
+    rate: CommitmentRate | null
+  ): Promise<SourceCommitmentRow[]> {
+    const rows: SourceCommitmentRow[] = [];
+    for (const a of amounts) {
+      if (parseAmount(a.amount).isZero()) continue;
+      rows.push(
+        await this.sources.insert(tx, {
+          source,
+          sourceLineId: a.sourceLineId ?? null,
+          budgetLineId: a.budgetLineId,
+          cycle,
+          amount: fixed2(parseAmount(a.amount)),
+          status,
+          rate,
+        })
+      );
+    }
+    return rows;
+  }
+
+  /** Submission of a direct payment or an advance: Reserved, or 422 BUDGET_EXCEEDED (Rule 3). */
+  async reserveFor(
+    tx: TenantTx,
+    source: CommitmentSource,
+    cycle: number,
+    amounts: readonly SourceAmount[],
+    rate: CommitmentRate | null = null
+  ): Promise<SourceCommitmentRow[]> {
+    if ((await this.sources.list(tx, source)).some((c) => c.status !== 'released')) {
+      throw new AppError('INVALID_STATE', 'The document already holds budget');
+    }
+    await this.assertFits(tx, amounts, source);
+    return this.insertAll(tx, source, cycle, amounts, 'reserved', rate);
+  }
+
+  /** Approval of a PO, contract or amendment: Committed directly, at the locked rate. */
+  async commitDirect(
+    tx: TenantTx,
+    source: CommitmentSource,
+    cycle: number,
+    amounts: readonly SourceAmount[],
+    rate: CommitmentRate | null = null
+  ): Promise<SourceCommitmentRow[]> {
+    await this.assertFits(tx, amounts, source);
+    return this.insertAll(tx, source, cycle, amounts, 'committed', rate);
+  }
+
+  /** Final approval of a reserved source: Reserved → Committed for the cycle. */
+  async commitFor(
+    tx: TenantTx,
+    source: CommitmentSource,
+    cycle: number
+  ): Promise<SourceCommitmentRow[]> {
+    const open = (await this.sources.list(tx, source)).filter(
+      (c) => c.cycle === cycle && c.status === 'reserved'
+    );
+    const rows: SourceCommitmentRow[] = [];
+    for (const c of open) rows.push(await this.sources.commit(tx, c.id));
+    return rows;
+  }
+
+  /** Return, reject, cancel or close: every open row of the source is released (BR-21). */
+  async releaseFor(
+    tx: TenantTx,
+    source: CommitmentSource,
+    reason: SourceReleaseReason
+  ): Promise<SourceCommitmentRow[]> {
+    const open = (await this.sources.list(tx, source)).filter((c) => c.status !== 'released');
+    await this.deps.txStore.lockLines(
+      tx,
+      open.map((c) => c.budgetLineId)
+    );
+    const rows: SourceCommitmentRow[] = [];
+    for (const c of open) rows.push(await this.sources.release(tx, c.id, reason));
+    return rows;
+  }
+
+  /**
+   * Partial consumption (payment posted, lines ordered, amendment): releases the open row with
+   * `reason` and, when something remains, inserts the remainder with the same status, source,
+   * line, cycle and locked rate, superseding the released row.
+   */
+  async splitConsume(
+    tx: TenantTx,
+    rowId: string,
+    amountGrant: string,
+    reason: SourceReleaseReason
+  ): Promise<{ released: SourceCommitmentRow; remainder: SourceCommitmentRow | null }> {
+    const row = await this.sources.find(tx, rowId);
+    if (!row) throw new AppError('NOT_FOUND', 'budget_commitment not found');
+    if (row.status === 'released') {
+      throw new AppError('INVALID_STATE', 'The commitment is already released');
+    }
+    const consumed = parseAmount(amountGrant);
+    const left = parseAmount(row.amount).minus(consumed);
+    if (consumed.lte(0) || left.isNegative()) {
+      throw new AppError('INVALID_STATE', 'The amount to consume exceeds the commitment');
+    }
+    await this.deps.txStore.lockLines(tx, [row.budgetLineId]);
+    const rate = await this.rateOf(tx, row.id);
+    const released = await this.sources.release(tx, row.id, reason);
+    const remainder = left.isZero()
+      ? null
+      : await this.sources.insert(tx, {
+          source: { docType: row.sourceDocType, docId: row.sourceDocId },
+          sourceLineId: row.sourceLineId,
+          budgetLineId: row.budgetLineId,
+          cycle: row.cycle,
+          amount: fixed2(left),
+          status: row.status === 'reserved' ? 'reserved' : 'committed',
+          supersedesId: row.id,
+          rate,
+        });
+    return { released, remainder };
+  }
+
+  /**
+   * Voucher reversal (US13-6): puts `amountGrant` back on the source's open row for the consumed
+   * row's line and cycle — released `reversal_restore` and replaced by the sum — or, when
+   * nothing is open any more, on a new committed row superseding the consumed one.
+   */
+  async restore(
+    tx: TenantTx,
+    consumedRowId: string,
+    amountGrant: string
+  ): Promise<SourceCommitmentRow> {
+    const consumed = await this.sources.find(tx, consumedRowId);
+    if (!consumed) throw new AppError('NOT_FOUND', 'budget_commitment not found');
+    await this.deps.txStore.lockLines(tx, [consumed.budgetLineId]);
+    const source = { docType: consumed.sourceDocType, docId: consumed.sourceDocId };
+    const open = (await this.sources.list(tx, source)).find(
+      (c) =>
+        c.status !== 'released' &&
+        c.budgetLineId === consumed.budgetLineId &&
+        c.cycle === consumed.cycle
+    );
+    const rate = await this.rateOf(tx, consumed.id);
+    const base = open ? parseAmount(open.amount) : new Decimal(0);
+    if (open) await this.sources.release(tx, open.id, 'reversal_restore');
+    return this.sources.insert(tx, {
+      source,
+      sourceLineId: consumed.sourceLineId,
+      budgetLineId: consumed.budgetLineId,
+      cycle: consumed.cycle,
+      amount: fixed2(base.plus(parseAmount(amountGrant))),
+      status: 'committed',
+      supersedesId: open?.id ?? consumed.id,
+      rate,
+    });
+  }
+
+  /** The locked rate of a commitment row, carried along its split chain. */
+  private async rateOf(tx: TenantTx, rowId: string): Promise<CommitmentRate | null> {
+    const [row] = await tx.sql<
+      {
+        rate_to_grant: string | null;
+        rate_date: string | null;
+        rate_source: string | null;
+        exchange_rate_id: string | null;
+      }[]
+    >`
+      select rate_to_grant::text as rate_to_grant, rate_date::text as rate_date, rate_source,
+             exchange_rate_id
+      from public.budget_commitment where id = ${rowId}`;
+    if (!row?.rate_to_grant) return null;
+    return {
+      rateToGrant: row.rate_to_grant,
+      rateDate: row.rate_date!,
+      rateSource: row.rate_source!,
+      exchangeRateId: row.exchange_rate_id,
+    };
   }
 
   // -------------------------------------------------------------------------------------------

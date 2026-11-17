@@ -2,17 +2,24 @@
 // (contracts/print-layout.md): header band, info grid, item table with a repeating header row,
 // totals with the amount in words, three signature boxes and a footer with page x / y. One
 // component renders both templates; `data.document.locale` picks the Arabic (RTL) or English
-// styles. Everything shown comes from PrPrintData — the template only formats.
-import { Document, Image, Page, Text, View, type Styles } from '@react-pdf/renderer';
+// styles. Everything shown comes from PrPrintData — the template only formats. The blocks come
+// from the shared print kit (002 D9), which reproduces this layout exactly.
+import { Document, Page, View } from '@react-pdf/renderer';
+import { formatAmount, formatDate, type PrPrintData } from '@ngo/shared';
 import {
-  calendarDateInTimeZone,
-  formatAmount,
-  formatDate,
-  formatDateTime,
-  type PrPrintData,
-  type PrPrintSignature,
-} from '@ngo/shared';
-import { createContext, useContext, type ReactNode } from 'react';
+  AmountInWords,
+  DocHeader,
+  Footer,
+  InfoGrid,
+  ItemTable,
+  KitStylesProvider,
+  KitText as T,
+  SignatureBlocks,
+  TotalRow,
+  Totals,
+  Watermark,
+  type InfoCell,
+} from '@/features/print-kit/components';
 import { COLUMNS, pdfStyles, type ColumnKey, type PdfStyles } from './styles';
 
 /** Translator over the `pr` messages namespace of the PDF's language. */
@@ -33,58 +40,53 @@ function trimZeros(value: string): string {
 const amount = (value: string | null, currency: string) =>
   value === null ? '' : formatAmount({ amount: value, currency }, { withCurrency: false });
 
-type TextStyle = Styles[string] | Styles[string][];
-
-const StylesContext = createContext<PdfStyles | null>(null);
-
-/** Text with the template's base direction (react-pdf does not inherit `direction`). */
-function T({ style, children }: { style?: TextStyle; children?: ReactNode }) {
-  const s = useContext(StylesContext)!;
-  const rest = Array.isArray(style) ? style : style ? [style] : [];
-  return <Text style={[s.text, ...rest]}>{children}</Text>;
-}
-
 export function PrDocument({ data, t, logoSrc }: PrDocumentProps) {
   const { locale, timeZone } = data.document;
   const s = pdfStyles(locale);
   const ctx = { s, t, timeZone };
+  const number = data.document.number ?? t('print.pdf.unnumbered');
 
   return (
-    <StylesContext.Provider value={s}>
+    <KitStylesProvider styles={s}>
       <Document title={data.document.number ?? t('print.pdf.title')} language={locale}>
         <Page size="A4" style={s.page}>
           {data.document.watermark ? (
-            <Text fixed style={[s.text, s.watermark]}>
-              {t(`print.pdf.watermark.${data.document.watermark}`)}
-            </Text>
+            <Watermark text={t(`print.pdf.watermark.${data.document.watermark}`)} />
           ) : null}
-          <HeaderBand data={data} logoSrc={logoSrc ?? null} {...ctx} />
-          <InfoGrid data={data} {...ctx} />
-          <ItemTable data={data} {...ctx} />
-          <Totals data={data} {...ctx} />
-          <Signatures data={data} {...ctx} />
-          <View fixed style={s.footer}>
-            <T style={[s.footerNumber, s.english]}>
-              {data.document.number ?? t('print.pdf.unnumbered')}
-            </T>
-            <T style={s.footerPrinted}>
-              {t('print.pdf.printedAt', {
-                date: formatDateTime(data.document.printedAt, timeZone),
-              })}
-            </T>
-          </View>
-          {/* a `render` Text inside a fixed View drops the whole View, so it stands alone;
-              it must not get `lineHeight` (s.text) either */}
-          <Text
-            fixed
-            style={s.pageNumber}
-            render={({ pageNumber, totalPages }) =>
-              t('print.pdf.page', { page: pageNumber, pages: totalPages })
-            }
+          <DocHeader
+            organization={data.organization}
+            logoSrc={logoSrc ?? null}
+            titleAr={t('print.pdf.titleAr')}
+            titleEn={t('print.pdf.titleEn')}
+            number={number}
+          />
+          <Info data={data} {...ctx} />
+          <Items data={data} {...ctx} />
+          <PrTotals data={data} {...ctx} />
+          <SignatureBlocks
+            boxes={[
+              { title: t('print.pdf.requestedBy'), signature: data.signatures.requestedBy },
+              { title: t('print.pdf.financeCheck'), signature: data.signatures.financeCheck },
+              { title: t('print.pdf.finalApproval'), signature: data.signatures.finalApproval },
+            ]}
+            labels={{
+              name: t('print.pdf.name'),
+              position: t('print.pdf.position'),
+              date: t('print.pdf.date'),
+              signature: t('print.pdf.signature'),
+            }}
+            timeZone={timeZone}
+          />
+          <Footer
+            number={number}
+            printedAt={data.document.printedAt}
+            timeZone={timeZone}
+            printedLabel={(date) => t('print.pdf.printedAt', { date })}
+            pageLabel={(page, pages) => t('print.pdf.page', { page, pages })}
           />
         </Page>
       </Document>
-    </StylesContext.Provider>
+    </KitStylesProvider>
   );
 }
 
@@ -95,31 +97,11 @@ interface ZoneProps {
   timeZone: string;
 }
 
-function HeaderBand({ data, s, t, logoSrc }: ZoneProps & { logoSrc: string | null }) {
-  const org = data.organization;
-  const contact = [org.address, org.phone, org.email].filter(Boolean).join(' · ');
-  return (
-    <View style={s.header}>
-      <View style={s.logoBox}>{logoSrc ? <Image src={logoSrc} style={s.logo} /> : null}</View>
-      <View style={s.orgBox}>
-        <T style={[s.orgNameAr, s.arabic]}>{org.nameAr}</T>
-        <T style={[s.orgNameEn, s.english]}>{org.nameEn}</T>
-        {contact ? <T style={s.orgContact}>{contact}</T> : null}
-      </View>
-      <View style={s.titleBox}>
-        <T style={[s.titleAr, s.arabic]}>{t('print.pdf.titleAr')}</T>
-        <T style={[s.titleEn, s.english]}>{t('print.pdf.titleEn')}</T>
-        <T style={s.number}>{data.document.number ?? t('print.pdf.unnumbered')}</T>
-      </View>
-    </View>
-  );
-}
-
-function InfoGrid({ data, s, t }: ZoneProps) {
+function Info({ data, t }: ZoneProps) {
   const h = data.header;
   const code = (l: { code: string; name: string } | null) => (l ? `${l.code} — ${l.name}` : '');
   const contact = [h.contactName, h.contactPhone].filter(Boolean).join(' · ');
-  const cells: [string, string, boolean?][] = [
+  const cells: InfoCell[] = [
     [t('print.pdf.prDate'), formatDate(h.prDate)],
     [t('print.pdf.requiredBy'), formatDate(h.requiredByDate)],
     [t('print.pdf.requestingOffice'), code(h.requestingOffice)],
@@ -132,25 +114,10 @@ function InfoGrid({ data, s, t }: ZoneProps) {
     [t('print.pdf.prType'), h.prType ? t(`form.types.${h.prType}`) : ''],
     [t('print.pdf.purpose'), h.purpose ?? '', true],
   ];
-  return (
-    <View style={s.grid}>
-      {cells.map(([label, value, wide]) => (
-        <View key={label} style={wide ? [s.gridCell, s.gridCellWide] : s.gridCell} wrap={false}>
-          <T style={s.gridLabel}>{label}</T>
-          <T style={s.gridValue}>{value}</T>
-        </View>
-      ))}
-    </View>
-  );
+  return <InfoGrid cells={cells} />;
 }
 
-const HEAD_ALIGN = { start: 'start', number: 'end', center: 'center' } as const;
-
-function ItemTable({ data, s, t }: ZoneProps) {
-  const width = Object.fromEntries(COLUMNS.map((c) => [c.key, c.width])) as Record<
-    ColumnKey,
-    string
-  >;
+function Items({ data, s, t }: ZoneProps) {
   const head: Record<ColumnKey, string> = {
     no: t('print.pdf.columns.no'),
     description: t('print.pdf.columns.description'),
@@ -163,17 +130,13 @@ function ItemTable({ data, s, t }: ZoneProps) {
     budgetLine: t('print.pdf.columns.budgetLine'),
   };
   return (
-    <View style={s.table}>
-      {/* `fixed` inside the table repeats the header row on every page the table spans */}
-      <View style={s.tableHead} fixed>
-        {COLUMNS.map((c) => (
-          <T key={c.key} style={[s.cell, s[HEAD_ALIGN[c.align]], { width: width[c.key] }]}>
-            {head[c.key]}
-          </T>
-        ))}
-      </View>
-      {data.lines.map((l) => (
-        <View key={l.lineNo} style={s.tableRow} wrap={false}>
+    <ItemTable
+      columns={COLUMNS}
+      head={head}
+      rows={data.lines}
+      rowKey={(l) => l.lineNo}
+      renderRow={(l, width) => (
+        <>
           <T style={[s.cellCode, { width: width.no }]}>{String(l.lineNo)}</T>
           <View style={[s.cell, { width: width.description }]}>
             <T>{l.description ?? ''}</T>
@@ -191,82 +154,48 @@ function ItemTable({ data, s, t }: ZoneProps) {
           <T style={[s.cellCode, { width: width.donor }]}>{l.donorShortName ?? ''}</T>
           <T style={[s.cell, { width: width.location }]}>{l.budgetLocation?.name ?? ''}</T>
           <T style={[s.cellCode, { width: width.budgetLine }]}>{l.budgetLineCode ?? ''}</T>
-        </View>
-      ))}
-    </View>
+        </>
+      )}
+    />
   );
 }
 
-function Totals({ data, s, t }: ZoneProps) {
-  const ar = data.document.locale === 'ar';
+function PrTotals({ data, s, t }: ZoneProps) {
   return (
-    <View style={s.totals} wrap={false}>
+    <Totals>
       {data.totals.map((total) => (
-        <View key={total.currency} style={s.totalRow}>
-          <T style={s.totalLabel}>{t('print.pdf.total', { currency: total.currency })}</T>
-          <View style={s.words}>
-            <T style={[s.wordsMain, ar ? s.arabic : s.english]}>
-              {ar ? total.amountInWordsAr : total.amountInWordsEn}
-            </T>
-            <T style={[s.wordsOther, ar ? s.english : s.arabic]}>
-              {ar ? total.amountInWordsEn : total.amountInWordsAr}
-            </T>
-          </View>
-          <T style={s.totalAmount}>
-            {formatAmount({ amount: total.amount, currency: total.currency })}
-          </T>
-        </View>
+        <TotalRow
+          key={total.currency}
+          label={t('print.pdf.total', { currency: total.currency })}
+          amount={formatAmount({ amount: total.amount, currency: total.currency })}
+        >
+          <AmountInWords
+            locale={data.document.locale}
+            ar={total.amountInWordsAr}
+            en={total.amountInWordsEn}
+          />
+        </TotalRow>
       ))}
       {data.grantTotal ? (
-        <View style={s.totalRow}>
-          <T style={s.totalLabel}>{t('print.pdf.grantTotal')}</T>
-          <View style={s.words}>
-            {data.grantTotal.rates.map((r) => (
-              <T key={r.currency} style={s.rateLine}>
-                {t('print.pdf.rate', {
-                  currency: r.currency,
-                  rate: trimZeros(r.rateToBase),
-                  date: formatDate(r.rateDate),
-                  source: r.source,
-                })}
-              </T>
-            ))}
-          </View>
-          <T style={s.totalAmount}>
-            {formatAmount({ amount: data.grantTotal.amount, currency: data.grantTotal.currency })}
-          </T>
-        </View>
+        <TotalRow
+          label={t('print.pdf.grantTotal')}
+          amount={formatAmount({
+            amount: data.grantTotal.amount,
+            currency: data.grantTotal.currency,
+          })}
+        >
+          {data.grantTotal.rates.map((r) => (
+            <T key={r.currency} style={s.rateLine}>
+              {t('print.pdf.rate', {
+                currency: r.currency,
+                rate: trimZeros(r.rateToBase),
+                date: formatDate(r.rateDate),
+                source: r.source,
+              })}
+            </T>
+          ))}
+        </TotalRow>
       ) : null}
-    </View>
-  );
-}
-
-function Signatures({ data, s, t, timeZone }: ZoneProps) {
-  const boxes: [string, PrPrintSignature][] = [
-    [t('print.pdf.requestedBy'), data.signatures.requestedBy],
-    [t('print.pdf.financeCheck'), data.signatures.financeCheck],
-    [t('print.pdf.finalApproval'), data.signatures.finalApproval],
-  ];
-  const line = (label: string, value: string | null) => (
-    <View style={s.signatureLine}>
-      <T style={s.signatureLabel}>{label}</T>
-      {value ? <T style={s.signatureValue}>{value}</T> : <View style={s.blank} />}
-    </View>
-  );
-  return (
-    <View style={s.signatures} wrap={false}>
-      {boxes.map(([title, signature]) => (
-        <View key={title} style={s.signatureBox}>
-          <T style={s.signatureTitle}>{title}</T>
-          {line(t('print.pdf.name'), signature?.name ?? null)}
-          {line(t('print.pdf.position'), signature?.position ?? null)}
-          {line(
-            t('print.pdf.date'),
-            signature ? formatDate(calendarDateInTimeZone(signature.signedAt, timeZone)) : null
-          )}
-          {line(t('print.pdf.signature'), null)}
-        </View>
-      ))}
-    </View>
+    </Totals>
   );
 }

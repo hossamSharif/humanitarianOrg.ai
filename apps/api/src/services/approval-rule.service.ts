@@ -7,6 +7,7 @@ import type {
   ApprovalRuleIssue,
   ApprovalRuleResolve,
   ResolvedRoute,
+  StepKind,
 } from '@ngo/shared';
 import { withTenantTx } from '../db/tx';
 import { AppError } from '../middleware/error';
@@ -98,7 +99,8 @@ export class ApprovalRuleService {
         currency: await rules.doaReferenceCurrency(),
         steps: route.steps.map((s, i) => ({
           stepOrder: s.stepOrder,
-          kind: s.kind,
+          // a PR route has only PR kinds
+          kind: s.kind as StepKind,
           roleId: s.roleId,
           roleNameAr: names.get(s.roleId)?.nameAr ?? '',
           roleNameEn: names.get(s.roleId)?.nameEn ?? '',

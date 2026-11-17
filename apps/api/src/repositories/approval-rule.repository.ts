@@ -1,7 +1,14 @@
 // PR approval rules and their steps (data-model §2, research R8), and the reads the routing
 // service needs (ApprovalRoutingStore). Runs inside withTenantTx: a rule's steps are replaced as
 // a whole, and migration 0011 checks the result at commit.
-import type { ApprovalRule, MembershipStatus, Permission, StepKind } from '@ngo/shared';
+import type {
+  ApprovalRule,
+  DoaType,
+  DocStepKind,
+  DocTypeCode,
+  MembershipStatus,
+  Permission,
+} from '@ngo/shared';
 import type postgres from 'postgres';
 import type { TxSql } from '../db/tx';
 import { AppError } from '../middleware/error';
@@ -10,6 +17,7 @@ import type {
   Candidate,
   PrStepWriter,
   RoleName,
+  RuleLike,
   RuleStepDraft,
   Signature,
 } from '../services/approval-routing.service';
@@ -23,29 +31,34 @@ export interface RuleValues {
 
 interface RuleRow {
   id: string;
-  doc_type: 'PR';
+  doc_type: DoaType;
   office_id: string | null;
   name: string;
   is_active: boolean;
   steps: {
     id: string;
     stepOrder: number;
-    kind: StepKind;
+    kind: DocStepKind;
     roleId: string;
     minAmount: string | null;
     maxAmount: string | null;
   }[];
 }
 
+/** PR rules as the 001 rules API shows them (only PR kinds occur in PR rules). */
 function toRule(r: RuleRow): ApprovalRule {
   return {
     id: r.id,
-    docType: r.doc_type,
+    docType: 'PR',
     officeId: r.office_id,
     name: r.name,
     isActive: r.is_active,
-    steps: r.steps,
+    steps: r.steps as ApprovalRule['steps'],
   };
+}
+
+function toRuleLike(r: RuleRow): RuleLike {
+  return { id: r.id, name: r.name, officeId: r.office_id, isActive: r.is_active, steps: r.steps };
 }
 
 export class ApprovalRuleRepository implements ApprovalRoutingStore {
@@ -54,7 +67,7 @@ export class ApprovalRuleRepository implements ApprovalRoutingStore {
     private readonly tenantId: string
   ) {}
 
-  private select(where: Fragment) {
+  private select(where: Fragment, doaType: DoaType = 'PR') {
     // amounts leave as text so no float rounding can creep in
     return this.sql<RuleRow[]>`
       select r.id, r.doc_type, r.office_id, r.name, r.is_active,
@@ -67,7 +80,7 @@ export class ApprovalRuleRepository implements ApprovalRoutingStore {
                from public.approval_rule_step s where s.rule_id = r.id
              ), '[]'::jsonb) as steps
       from public.approval_rule r
-      where r.tenant_id = ${this.tenantId} and r.doc_type = 'PR' ${where}
+      where r.tenant_id = ${this.tenantId} and r.doc_type = ${doaType} ${where}
       order by r.office_id nulls first, r.name`;
   }
 
@@ -75,8 +88,9 @@ export class ApprovalRuleRepository implements ApprovalRoutingStore {
     return (await this.select(this.sql``)).map(toRule);
   }
 
-  async listRules(): Promise<ApprovalRule[]> {
-    return this.list();
+  /** PR rules for the 001 callers; any DoA type for the document workflow (002). */
+  async listRules(doaType: DoaType = 'PR'): Promise<RuleLike[]> {
+    return (await this.select(this.sql``, doaType)).map(toRuleLike);
   }
 
   async findById(id: string): Promise<ApprovalRule | null> {
@@ -193,6 +207,10 @@ export class ApprovalRuleRepository implements ApprovalRoutingStore {
     return new Map(rows.map((r) => [r.id, { nameAr: r.name_ar, nameEn: r.name_en }]));
   }
 
+  docSignatures(docType: DocTypeCode, docId: string): Promise<Signature[]> {
+    return docSignaturesOf(this.sql, this.tenantId, docType, docId);
+  }
+
   async prSignatures(prId: string): Promise<Signature[]> {
     const rows = await this.sql<
       { user_id: string; action: string; cycle: number; step_order: number | null }[]
@@ -206,6 +224,26 @@ export class ApprovalRuleRepository implements ApprovalRoutingStore {
       stepOrder: r.step_order,
     }));
   }
+}
+
+/** doc_signature rows of a non-PR document, for step eligibility (002). */
+export async function docSignaturesOf(
+  sql: TxSql,
+  tenantId: string,
+  docType: DocTypeCode,
+  docId: string
+): Promise<Signature[]> {
+  const rows = await sql<
+    { user_id: string; action: string; cycle: number; step_order: number | null }[]
+  >`
+    select user_id, action, cycle, step_order from public.doc_signature
+    where tenant_id = ${tenantId} and doc_type = ${docType} and doc_id = ${docId}`;
+  return rows.map((r) => ({
+    userId: r.user_id,
+    action: r.action,
+    cycle: r.cycle,
+    stepOrder: r.step_order,
+  }));
 }
 
 /** PrStepWriter for ApprovalRoutingService.materialiseSteps (US4 submit). */

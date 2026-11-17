@@ -47,7 +47,11 @@ export type ApprovalRuleIssueReason =
   | 'no_steps'
   | 'step_order_gap'
   | 'first_step_not_finance_check'
+  /** 002: PV, RV and JV routes start with a `check` step */
+  | 'first_step_not_check'
   | 'multiple_finance_check'
+  /** 002: finance_check / check used by a DoA type that has no such step, or after step 1 */
+  | 'kind_not_allowed'
   | 'finance_check_banded'
   | 'missing_final_approval'
   | 'final_not_highest'

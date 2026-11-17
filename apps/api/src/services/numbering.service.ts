@@ -1,10 +1,11 @@
-// PR numbering (FR-004, Business Rule 9, research R6). Numbers are assigned at first submission
-// (US4) inside the submit transaction; the year is that of the submission instant in the
-// tenant's timezone, not the PR date.
+// Document numbering (FR-004, Business Rule 9, research R6; 002 D7 for every registered code).
+// Numbers are assigned inside the transaction that submits (or, for GRN, SCC and INV, creates)
+// the document, per type, office and year; the year is that of the instant in the tenant's
+// timezone, not the document date. A rolled-back transaction never consumes a number.
 import {
   calendarDateInTimeZone,
   formatDocumentNumber,
-  type DocType,
+  type DocTypeCode,
   type NumberingConfigInput,
   type NumberingConfigResponse,
   type NumberingPreviewParts,
@@ -35,14 +36,14 @@ export class NumberingService {
   ) {}
 
   /** Next number for the office, without consuming it. */
-  async preview(docType: DocType, officeId?: string, now: Date = new Date()): Promise<string> {
+  async preview(docType: DocTypeCode, officeId?: string, now: Date = new Date()): Promise<string> {
     const config = await this.store.getConfig(docType);
     const parts = await this.previewParts(docType, officeId, now);
     return formatNumber(config, parts.officeCode, parts.year, parts.seq);
   }
 
   async get(
-    docType: DocType,
+    docType: DocTypeCode,
     officeId?: string,
     now: Date = new Date()
   ): Promise<NumberingConfigResponse> {
@@ -51,7 +52,7 @@ export class NumberingService {
 
   /** Changes apply to numbers assigned from now on; issued numbers never change (FR-005). */
   async update(
-    docType: DocType,
+    docType: DocTypeCode,
     input: NumberingConfigInput,
     officeId?: string,
     now: Date = new Date()
@@ -61,7 +62,7 @@ export class NumberingService {
 
   async assignNumber(
     tx: TxSql,
-    docType: DocType,
+    docType: DocTypeCode,
     officeId: string,
     submittedAt: string | Date,
     timeZone: string
@@ -74,7 +75,7 @@ export class NumberingService {
   }
 
   private async withPreview(
-    docType: DocType,
+    docType: DocTypeCode,
     config: NumberingConfigInput,
     officeId: string | undefined,
     now: Date
@@ -85,7 +86,7 @@ export class NumberingService {
   }
 
   private async previewParts(
-    docType: DocType,
+    docType: DocTypeCode,
     officeId: string | undefined,
     now: Date
   ): Promise<NumberingPreviewParts> {

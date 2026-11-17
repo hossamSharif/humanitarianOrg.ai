@@ -1,7 +1,13 @@
-// In-app notifications (research R16). Write side: rows inserted inside the PR transition's
-// transaction for the eligible users of a step that became pending, or the requester when their
-// PR moves on. Read side (US8, FR-048): the recipient's list, unread count and read marks.
-import type { NotificationItem, NotificationList, NotificationListQuery } from '@ngo/shared';
+// In-app notifications (research R16, 002 R29). Write side: rows inserted inside the
+// transition's transaction for the eligible users of a step that became pending, or the creator
+// when their document moves on — PR kinds for PRs (001), doc_* kinds for every other type.
+// Read side (US8, FR-048): the recipient's list, unread count and read marks.
+import type {
+  DocTypeCode,
+  NotificationItem,
+  NotificationList,
+  NotificationListQuery,
+} from '@ngo/shared';
 import { withTenantTx } from '../db/tx';
 import { AppError } from '../middleware/error';
 import {
@@ -21,6 +27,13 @@ export interface NotifiedPr extends EligibilityPr {
   id: string;
   number: string | null;
 }
+
+/** A non-PR document as notifications see it (`doc` names its type). */
+export interface NotifiedDoc extends NotifiedPr {
+  doc: NonNullable<EligibilityPr['doc']>;
+}
+
+export type DocOutcomeKind = 'doc_approved' | 'doc_rejected' | 'doc_returned' | 'doc_cancelled';
 
 export class NotificationService {
   constructor(
@@ -80,6 +93,65 @@ export class NotificationService {
     ]);
   }
 }
+
+/** doc_* notifications for any non-PR document (002 data-model §9). */
+export class DocNotificationService {
+  constructor(
+    private readonly store: NotificationStore,
+    private readonly routing: ApprovalRoutingService
+  ) {}
+
+  private row(doc: NotifiedDoc, userId: string, kind: NotificationKind, params: Params) {
+    const docType: DocTypeCode = doc.doc.docType;
+    return { userId, kind, docType, docId: doc.id, params };
+  }
+
+  /** `doc_action_required` for everyone who may act on `step`; returns their user ids. */
+  async notifyStepEligible(
+    doc: NotifiedDoc,
+    step: EligibilityStep,
+    actorName: string
+  ): Promise<string[]> {
+    const users = await this.routing.eligibleUsers(step, doc);
+    const userIds = [...new Set(users.map((u) => u.userId))];
+    await this.store.insertMany(
+      userIds.map((userId) =>
+        this.row(doc, userId, 'doc_action_required', {
+          number: doc.number,
+          stepKind: step.kind,
+          actorName,
+        })
+      )
+    );
+    return userIds;
+  }
+
+  /** doc_approved / doc_rejected / doc_returned / doc_cancelled to the creator. */
+  async notifyCreator(doc: NotifiedDoc, kind: DocOutcomeKind, actorName: string): Promise<void> {
+    if (!doc.requesterId) return;
+    await this.store.insertMany([
+      this.row(doc, doc.requesterId, kind, { number: doc.number, stepKind: null, actorName }),
+    ]);
+  }
+
+  /** `doc_reassigned` to the user a step was assigned to. */
+  async notifyReassigned(
+    doc: NotifiedDoc,
+    step: Pick<EligibilityStep, 'kind'>,
+    userId: string,
+    actorName: string
+  ): Promise<void> {
+    await this.store.insertMany([
+      this.row(doc, userId, 'doc_reassigned', {
+        number: doc.number,
+        stepKind: step.kind,
+        actorName,
+      }),
+    ]);
+  }
+}
+
+type Params = Record<string, string | null>;
 
 /** The caller's own notifications; every call is one tenant transaction (RLS as the caller). */
 export class NotificationInbox {

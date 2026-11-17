@@ -6,7 +6,8 @@ import { z } from 'zod';
 import type { Money } from '../money';
 import { PR_STATUSES, type PrStatus } from '../pr-state';
 import type { StepKind } from '../permissions';
-import { isoDate, moneyString, pagination, sortDirection, uuid } from './common';
+import type { sortDirection } from './common';
+import { isoDate, moneyString, pagination, uuid } from './common';
 
 export const PR_LIST_SORT_FIELDS = [
   'number',

@@ -39,4 +39,9 @@ export const queryKeys = {
     units: ['setup', 'units'] as const,
     numbering: (docType: string) => ['setup', 'numbering', docType] as const,
   },
+  /** any 002 document, by its route slug (bid-analyses, pos, vouchers, …) */
+  docs: {
+    all: (slug: string) => ['docs', slug] as const,
+    detail: (slug: string, id: string) => ['docs', slug, 'detail', id] as const,
+  },
 };

@@ -1,7 +1,7 @@
 // numbering_config and document_sequence (research R6). Configuration goes through supabase-js;
 // the sequence is incremented only inside the PR submit transaction.
 import type { Tables } from '@ngo/database';
-import type { DocType, NumberingConfigInput } from '@ngo/shared';
+import type { DocTypeCode, NumberingConfigInput } from '@ngo/shared';
 import type { UserClient } from '../db/supabase';
 import type { TxSql } from '../db/tx';
 import { AppError, fromPostgresError } from '../middleware/error';
@@ -15,20 +15,20 @@ export interface OfficeRef {
 
 /** What preview and configuration need. */
 export interface NumberingStore {
-  getConfig(docType: DocType): Promise<NumberingConfigInput>;
-  saveConfig(docType: DocType, input: NumberingConfigInput): Promise<NumberingConfigInput>;
+  getConfig(docType: DocTypeCode): Promise<NumberingConfigInput>;
+  saveConfig(docType: DocTypeCode, input: NumberingConfigInput): Promise<NumberingConfigInput>;
   office(officeId: string): Promise<OfficeRef>;
   firstActiveOffice(): Promise<OfficeRef | null>;
   /** current last_value of the sequence, 0 when it has not started */
-  lastValue(docType: DocType, officeId: string, year: number): Promise<number>;
+  lastValue(docType: DocTypeCode, officeId: string, year: number): Promise<number>;
   timeZone(): Promise<string>;
 }
 
 /** What number assignment needs, inside the caller's transaction. */
 export interface NumberingTxStore {
-  getConfig(docType: DocType): Promise<NumberingConfigInput>;
+  getConfig(docType: DocTypeCode): Promise<NumberingConfigInput>;
   office(officeId: string): Promise<OfficeRef>;
-  nextValue(docType: DocType, officeId: string, year: number): Promise<number>;
+  nextValue(docType: DocTypeCode, officeId: string, year: number): Promise<number>;
 }
 
 function toConfig(row: Tables<'numbering_config'>): NumberingConfigInput {
@@ -53,14 +53,17 @@ export class NumberingRepository
     super(ctx, 'numbering_config', db);
   }
 
-  async getConfig(docType: DocType): Promise<NumberingConfigInput> {
+  async getConfig(docType: DocTypeCode): Promise<NumberingConfigInput> {
     const { data, error } = await this.query().select('*').eq('doc_type', docType).maybeSingle();
     if (error) raise(error);
     if (!data) throw new AppError('NOT_FOUND', `No numbering configured for ${docType}`);
     return toConfig(data as Tables<'numbering_config'>);
   }
 
-  async saveConfig(docType: DocType, input: NumberingConfigInput): Promise<NumberingConfigInput> {
+  async saveConfig(
+    docType: DocTypeCode,
+    input: NumberingConfigInput
+  ): Promise<NumberingConfigInput> {
     const { data, error } = await this.query()
       .upsert(
         {
@@ -103,7 +106,7 @@ export class NumberingRepository
     return data ?? null;
   }
 
-  async lastValue(docType: DocType, officeId: string, year: number): Promise<number> {
+  async lastValue(docType: DocTypeCode, officeId: string, year: number): Promise<number> {
     const { data, error } = await this.db
       .from('document_sequence')
       .select('last_value')
@@ -126,7 +129,7 @@ export class NumberingRepository
   }
 
   /** Next number in the sequence; the row lock serializes concurrent submits (gap-free). */
-  nextValue(tx: TxSql, docType: DocType, officeId: string, year: number): Promise<number> {
+  nextValue(tx: TxSql, docType: DocTypeCode, officeId: string, year: number): Promise<number> {
     return new NumberingTxRepository(tx, this.ctx.tenantId).nextValue(docType, officeId, year);
   }
 }
@@ -137,7 +140,7 @@ export class NumberingTxRepository implements NumberingTxStore {
     private readonly tenantId: string
   ) {}
 
-  async getConfig(docType: DocType): Promise<NumberingConfigInput> {
+  async getConfig(docType: DocTypeCode): Promise<NumberingConfigInput> {
     const [row] = await this.sql<Tables<'numbering_config'>[]>`
       select * from public.numbering_config
       where tenant_id = ${this.tenantId} and doc_type = ${docType}`;
@@ -152,7 +155,7 @@ export class NumberingTxRepository implements NumberingTxStore {
     return row;
   }
 
-  async nextValue(docType: DocType, officeId: string, year: number): Promise<number> {
+  async nextValue(docType: DocTypeCode, officeId: string, year: number): Promise<number> {
     const [row] = await this.sql<{ last_value: number }[]>`
       insert into public.document_sequence as s (tenant_id, doc_type, office_id, year, last_value)
       values (${this.tenantId}, ${docType}, ${officeId}, ${year}, 1)

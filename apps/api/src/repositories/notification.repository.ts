@@ -1,17 +1,32 @@
-// In-app notifications (research R16): inserted inside the transaction of the PR transition that
-// causes them, so a rolled-back command notifies nobody. Readers see only their own rows (RLS).
-import type { NotificationItem, NotificationKind } from '@ngo/shared';
+// In-app notifications (research R16, 002 R29): inserted inside the transaction of the transition
+// that causes them, so a rolled-back command notifies nobody. Readers see only their own rows
+// (RLS). PR rows carry pr_id (the database fills doc_type/doc_id); other documents carry
+// doc_type/doc_id, and scheduled kinds a dedupe key so a reminder is sent once.
+import type { DocTypeCode, NotificationItem, NotificationKind } from '@ngo/shared';
 import type { TxSql } from '../db/tx';
 
 export type { NotificationKind };
 
-export interface NewNotification {
+export interface NewPrNotification {
   userId: string;
   kind: NotificationKind;
   prId: string;
   /** rendered by the client through i18n: { number, stepKind, actorName } */
   params: Record<string, string | null>;
 }
+
+export interface NewDocNotification {
+  userId: string;
+  kind: NotificationKind;
+  prId?: undefined;
+  docType: DocTypeCode;
+  docId: string;
+  params: Record<string, string | null>;
+  /** at most one row per user and key (insert … on conflict do nothing) */
+  dedupeKey?: string | null;
+}
+
+export type NewNotification = NewPrNotification | NewDocNotification;
 
 export interface NotificationStore {
   insertMany(rows: readonly NewNotification[]): Promise<void>;
@@ -30,8 +45,8 @@ export interface NotificationInboxStore {
 }
 
 const ITEM_COLUMNS = `
-  id, kind, pr_id as "prId", params, to_json(read_at)#>>'{}' as "readAt",
-  to_json(created_at)#>>'{}' as "createdAt"`;
+  id, kind, pr_id as "prId", doc_type as "docType", doc_id as "docId", params,
+  to_json(read_at)#>>'{}' as "readAt", to_json(created_at)#>>'{}' as "createdAt"`;
 
 export class NotificationRepository implements NotificationStore, NotificationInboxStore {
   constructor(
@@ -47,10 +62,14 @@ export class NotificationRepository implements NotificationStore, NotificationIn
           tenant_id: this.tenantId,
           user_id: r.userId,
           kind: r.kind,
-          pr_id: r.prId,
+          pr_id: 'docType' in r ? null : r.prId,
+          doc_type: 'docType' in r ? r.docType : null,
+          doc_id: 'docType' in r ? r.docId : null,
+          dedupe_key: 'docType' in r ? (r.dedupeKey ?? null) : null,
           params: this.sql.json(r.params),
         }))
-      )}`;
+      )}
+      on conflict do nothing`;
   }
 
   // Reads filter on user_id as well as RLS (recipient-only policy), so a misconfigured policy

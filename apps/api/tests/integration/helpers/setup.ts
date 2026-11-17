@@ -73,8 +73,9 @@ const TENANT_TABLES = [
   'notification',
   'idempotency_key',
   'budget_commitment',
-  'approval_action',
-  'pr_approval_step',
+  // base tables of the 001 views approval_action / pr_approval_step (002 migration 0012)
+  'doc_signature',
+  'doc_approval_step',
   'pr_attachment',
   'pr_line',
   'purchase_requisition',

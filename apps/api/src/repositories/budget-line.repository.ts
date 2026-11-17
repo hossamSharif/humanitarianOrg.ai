@@ -269,7 +269,8 @@ export class BudgetTxRepository implements BudgetTxStore {
       from public.budget_commitment c
       where c.budget_line_id in ${tx.sql([...new Set(ids)])}
         and c.status in ('reserved', 'committed')
-        and (${exclude}::uuid is null or c.pr_id <> ${exclude}::uuid)
+        -- non-PR rows have no pr_id (002): they always count
+        and (${exclude}::uuid is null or c.pr_id is distinct from ${exclude}::uuid)
       group by c.budget_line_id`;
     for (const r of rows) {
       usage.set(r.budget_line_id, { reserved: r.reserved, committed: r.committed });

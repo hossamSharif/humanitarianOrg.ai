@@ -1,23 +1,29 @@
-// Approval routing (research R8): rule validation (FR-019, FR-035), route resolution by office
-// and DoA amount, step eligibility (FR-020, FR-032, Business Rules 5–6) and materialising the
-// resolved route as pr_approval_step rows at submission (US4). The rules themselves are pure
-// functions so they can be tested without a database; the service adds the data they need.
+// Approval routing (research R8, 002 D1): rule validation (FR-019, FR-035), route resolution by
+// DoA type, office and DoA amount, step eligibility (FR-020, FR-032, Business Rules 5–6 and 8)
+// and materialising the resolved PR route as pr_approval_step rows at submission (US4). The
+// rules themselves are pure functions so they can be tested without a database; the service
+// adds the data they need. Separation of duties is decided by segregation.service.
 import {
   Decimal,
-  STEP_KIND_PERMISSION,
+  REQUIRED_FIRST_KIND,
   parseAmount,
+  stepPermission,
   type ApprovalRuleIssue,
+  type DoaType,
+  type DocStepKind,
+  type DocTypeCode,
   type MembershipStatus,
   type Permission,
   type StepKind,
 } from '@ngo/shared';
 import type { TxSql } from '../db/tx';
 import { AppError } from '../middleware/error';
+import { canSign, type SegregationDoc } from './segregation.service';
 
 export interface RuleStepLike {
   id: string;
   stepOrder: number;
-  kind: StepKind;
+  kind: DocStepKind;
   roleId: string;
   minAmount: string | null;
   maxAmount: string | null;
@@ -31,12 +37,16 @@ export interface RuleLike {
   steps: RuleStepLike[];
 }
 
-export type RuleStepDraft = Omit<RuleStepLike, 'id'>;
+/** A PR rule step as the 001 rules API edits it. */
+export type RuleStepDraft = Omit<RuleStepLike, 'id' | 'kind'> & { kind: StepKind };
+
+/** A rule step of any DoA type (002). */
+export type DocRuleStepDraft = Omit<RuleStepLike, 'id'>;
 
 /** One step of a resolved route; banded final approval is narrowed to the matching row. */
 export interface RouteStep {
   stepOrder: number;
-  kind: StepKind;
+  kind: DocStepKind;
   roleId: string;
   ruleStepId: string;
   minAmount: string | null;
@@ -60,21 +70,34 @@ export interface Candidate {
   officeIds: readonly string[];
 }
 
-/** The step being acted on (a pr_approval_step row, or a route step about to become one). */
+/** The step being acted on (a doc_approval_step row, or a route step about to become one). */
 export interface EligibilityStep {
   cycle: number;
   stepOrder: number;
-  kind: StepKind;
+  kind: DocStepKind;
   requiredRoleId: string;
   assignedUserId: string | null;
 }
 
-/** The PR the step belongs to; `id`/`requesterId` are null for the admin route preview. */
+/**
+ * The document the step belongs to; `id`/`requesterId` are null for the admin route preview.
+ * Without `doc` it is a PR (001); other types name their code, DoA type and the extra facts
+ * their segregation policy needs. `requesterId` is the creator of any document.
+ */
 export interface EligibilityPr {
   id: string | null;
   requesterId: string | null;
   requestingOfficeId: string;
+  doc?: EligibilityDocType;
 }
+
+export interface EligibilityDocType {
+  docType: DocTypeCode;
+  doaType: DoaType;
+  segregation?: Omit<SegregationDoc, 'docType' | 'creatorId'>;
+}
+
+const PR_DOC: EligibilityDocType = { docType: 'PR', doaType: 'PR' };
 
 /** An approval_action row of the PR (any cycle). */
 export interface Signature {
@@ -108,29 +131,57 @@ function hasBand(step: Pick<RuleStepLike, 'minAmount' | 'maxAmount'>): boolean {
   return step.minAmount !== null || step.maxAmount !== null;
 }
 
+/** Checking kinds each DoA type may use (mirrors app.approval_rule_check, migration 0012). */
+function checkingKindAllowed(doaType: DoaType, kind: DocStepKind): boolean {
+  if (kind === 'finance_check') return doaType === 'PR' || doaType === 'PAY' || doaType === 'DPR';
+  if (kind === 'check') return doaType === 'PV' || doaType === 'RV' || doaType === 'JV';
+  return true;
+}
+
+const isChecking = (s: Pick<DocRuleStepDraft, 'kind'>) =>
+  s.kind === 'finance_check' || s.kind === 'check';
+
 /**
- * Every structural problem of a rule's steps (data-model §2 "approval_rule_step"):
- * step 1 is the only finance check and has no band; orders are 1..n; exactly one final-approval
- * order, the highest; its bands start at 0, are contiguous, non-overlapping and end open;
- * every other order has exactly one unbanded row.
+ * Every structural problem of a rule's steps (data-model §2 "approval_rule_step"): PR routes
+ * start with their only finance check and PV/RV/JV routes with their only `check`, unbanded;
+ * a checking step is only ever step 1 of a type that has one; orders are 1..n; exactly one
+ * final-approval order, the highest; its bands start at 0, are contiguous, non-overlapping and
+ * end open; every other order has exactly one unbanded row.
  */
-export function ruleIssues(steps: readonly RuleStepDraft[]): ApprovalRuleIssue[] {
+export function ruleIssues(
+  steps: readonly DocRuleStepDraft[],
+  doaType: DoaType = 'PR'
+): ApprovalRuleIssue[] {
   const issues: ApprovalRuleIssue[] = [];
   if (steps.length === 0) return [{ reason: 'no_steps' }];
 
   const orders = [...new Set(steps.map((s) => s.stepOrder))].sort((a, b) => a - b);
   if (orders.some((order, i) => order !== i + 1)) issues.push({ reason: 'step_order_gap' });
 
-  const first = steps.filter((s) => s.stepOrder === 1);
-  if (first.length === 0 || first.some((s) => s.kind !== 'finance_check')) {
-    issues.push({ reason: 'first_step_not_finance_check', stepOrder: 1 });
+  const requiredFirst = REQUIRED_FIRST_KIND[doaType];
+  if (requiredFirst !== null) {
+    const first = steps.filter((s) => s.stepOrder === 1);
+    if (first.length === 0 || first.some((s) => s.kind !== requiredFirst)) {
+      issues.push({
+        reason:
+          requiredFirst === 'finance_check'
+            ? 'first_step_not_finance_check'
+            : 'first_step_not_check',
+        stepOrder: 1,
+      });
+    }
   }
-  const financeChecks = steps.filter((s) => s.kind === 'finance_check');
-  if (financeChecks.length > 1) {
-    const extra = financeChecks.find((s) => s.stepOrder !== 1) ?? financeChecks[1]!;
+  const checks = steps.filter(isChecking);
+  if (checks.length > 1) {
+    const extra = checks.find((s) => s.stepOrder !== 1) ?? checks[1]!;
     issues.push({ reason: 'multiple_finance_check', stepOrder: extra.stepOrder });
   }
-  for (const s of financeChecks.filter(hasBand)) {
+  for (const s of checks) {
+    if (!checkingKindAllowed(doaType, s.kind) || (requiredFirst === null && s.stepOrder !== 1)) {
+      issues.push({ reason: 'kind_not_allowed', stepOrder: s.stepOrder });
+    }
+  }
+  for (const s of checks.filter(hasBand)) {
     issues.push({ reason: 'finance_check_banded', stepOrder: s.stepOrder });
   }
 
@@ -151,7 +202,7 @@ export function ruleIssues(steps: readonly RuleStepDraft[]): ApprovalRuleIssue[]
     if (finals.length > 0 && order === highest) continue;
     const rows = steps.filter((s) => s.stepOrder === order);
     if (rows.length > 1) issues.push({ reason: 'non_final_multiple_rows', stepOrder: order });
-    if (rows.some((s) => s.kind !== 'finance_check' && hasBand(s))) {
+    if (rows.some((s) => !isChecking(s) && hasBand(s))) {
       issues.push({ reason: 'non_final_banded', stepOrder: order });
     }
   }
@@ -164,7 +215,7 @@ export function ruleIssues(steps: readonly RuleStepDraft[]): ApprovalRuleIssue[]
   return issues;
 }
 
-function bandIssues(bands: readonly RuleStepDraft[], stepOrder: number): ApprovalRuleIssue[] {
+function bandIssues(bands: readonly DocRuleStepDraft[], stepOrder: number): ApprovalRuleIssue[] {
   const issues: ApprovalRuleIssue[] = [];
   const add = (reason: ApprovalRuleIssue['reason']) => {
     if (!issues.some((i) => i.reason === reason)) issues.push({ reason, stepOrder });
@@ -186,8 +237,8 @@ function bandIssues(bands: readonly RuleStepDraft[], stepOrder: number): Approva
 }
 
 /** 422 APPROVAL_RULE_INVALID listing every issue. */
-export function validateRule(steps: readonly RuleStepDraft[]): void {
-  const issues = ruleIssues(steps);
+export function validateRule(steps: readonly DocRuleStepDraft[], doaType: DoaType = 'PR'): void {
+  const issues = ruleIssues(steps, doaType);
   if (issues.length > 0) {
     throw new AppError('APPROVAL_RULE_INVALID', 'The approval rule is not valid', { issues });
   }
@@ -218,8 +269,8 @@ export function bandContains(
 }
 
 /** One route step per step order, the final approval narrowed to the band of `amount`. */
-export function routeFor(rule: RuleLike, amount: string): Route {
-  validateRule(rule.steps);
+export function routeFor(rule: RuleLike, amount: string, doaType: DoaType = 'PR'): Route {
+  validateRule(rule.steps, doaType);
   const orders = [...new Set(rule.steps.map((s) => s.stepOrder))].sort((a, b) => a - b);
   const steps = orders.map((order) => {
     const rows = rule.steps.filter((s) => s.stepOrder === order);
@@ -243,8 +294,9 @@ export function routeFor(rule: RuleLike, amount: string): Route {
 
 /**
  * Eligible = active member AND holds the step's role AND that role grants the step kind's
- * permission AND has access to the PR's requesting office AND is not the PR creator AND has not
- * signed a different step of the PR in any cycle AND has not signed in the current cycle
+ * permission for the document's DoA type (stepPermission) AND has access to the document's
+ * office AND the type's segregation policy allows the signature — for every type: not the
+ * creator, not a signer of a different step in any cycle nor of any step in the current cycle
  * (re-signing the same step after a Return is allowed, FR-032). An assigned step admits only
  * its assignee.
  */
@@ -258,20 +310,21 @@ export function candidateIsEligible(
   if (step.assignedUserId !== null && candidate.userId !== step.assignedUserId) return false;
   if (!candidate.roleIds.includes(step.requiredRoleId)) return false;
 
+  const doc = pr.doc ?? PR_DOC;
+  const needed = stepPermission(doc.doaType, step.kind);
   const granted = facts.rolePermissions.get(step.requiredRoleId) ?? [];
-  if (!granted.includes(STEP_KIND_PERMISSION[step.kind])) return false;
+  if (needed === null || !granted.includes(needed)) return false;
 
   if (!candidate.orgWideAccess && !candidate.officeIds.includes(pr.requestingOfficeId)) {
     return false;
   }
-  if (pr.requesterId !== null && candidate.userId === pr.requesterId) return false;
 
-  return !facts.signatures.some(
-    (s) =>
-      s.userId === candidate.userId &&
-      s.action === 'approve' &&
-      (s.stepOrder !== step.stepOrder || s.cycle === step.cycle)
-  );
+  return canSign(
+    { ...doc.segregation, docType: doc.docType, creatorId: pr.requesterId },
+    candidate.userId,
+    { kind: 'step', stepKind: step.kind, stepOrder: step.stepOrder, cycle: step.cycle },
+    facts.signatures
+  ).ok;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -285,13 +338,15 @@ export interface RoleName {
 
 /** Reads the routing rules need; implemented over SQL in approval-rule.repository.ts. */
 export interface ApprovalRoutingStore {
-  /** every PR rule of the tenant, with steps */
-  listRules(): Promise<RuleLike[]>;
+  /** every rule of the tenant for the DoA type (PR when omitted), with steps */
+  listRules(doaType?: DoaType): Promise<RuleLike[]>;
   /** members holding the role, with all their roles and offices */
   roleHolders(roleId: string): Promise<Candidate[]>;
   rolePermissions(roleIds: readonly string[]): Promise<Map<string, Permission[]>>;
   roleNames(roleIds: readonly string[]): Promise<Map<string, RoleName>>;
   prSignatures(prId: string): Promise<Signature[]>;
+  /** doc_signature rows of any other document */
+  docSignatures?(docType: DocTypeCode, docId: string): Promise<Signature[]>;
 }
 
 export interface PrStepRow {
@@ -318,21 +373,33 @@ export class ApprovalRoutingService {
   }
 
   /** Office rule else organization rule; 422 APPROVAL_RULE_INVALID `no_rule` when neither. */
-  async resolveRoute(officeId: string, doaAmount: string): Promise<Route> {
-    const rule = pickRule(await this.store.listRules(), officeId);
+  async resolveRoute(officeId: string, doaAmount: string, doaType: DoaType = 'PR'): Promise<Route> {
+    const rules =
+      doaType === 'PR' ? await this.store.listRules() : await this.store.listRules(doaType);
+    const rule = pickRule(rules, officeId);
     if (!rule) {
       throw new AppError('APPROVAL_RULE_INVALID', 'No active approval rule applies', {
         issues: [{ reason: 'no_rule' }],
       });
     }
-    return routeFor(rule, doaAmount);
+    return routeFor(rule, doaAmount, doaType);
+  }
+
+  private signaturesOf(pr: EligibilityPr): Promise<Signature[]> {
+    if (!pr.id) return Promise.resolve([]);
+    const docType = pr.doc?.docType ?? 'PR';
+    if (docType === 'PR') return this.store.prSignatures(pr.id);
+    if (!this.store.docSignatures) {
+      throw new Error('ApprovalRoutingService: the store cannot read document signatures');
+    }
+    return this.store.docSignatures(docType, pr.id);
   }
 
   async eligibleUsers(step: EligibilityStep, pr: EligibilityPr): Promise<Candidate[]> {
     const [holders, rolePermissions, signatures] = await Promise.all([
       this.store.roleHolders(step.requiredRoleId),
       this.store.rolePermissions([step.requiredRoleId]),
-      pr.id ? this.store.prSignatures(pr.id) : Promise.resolve([]),
+      this.signaturesOf(pr),
     ]);
     const facts = { rolePermissions, signatures };
     return holders.filter((c) => candidateIsEligible(c, step, pr, facts));
@@ -391,7 +458,8 @@ export class ApprovalRoutingService {
       prId: pr.id,
       cycle,
       stepOrder: s.stepOrder,
-      kind: s.kind,
+      // a PR route has only PR kinds (validated for doaType 'PR')
+      kind: s.kind as StepKind,
       requiredRoleId: s.roleId,
       ruleStepId: s.ruleStepId,
       status: i === 0 ? 'pending' : 'waiting',
