@@ -380,7 +380,9 @@
     "approved": "معتمد",
     "returned": "مُعاد",
     "rejected": "مرفوض",
-    "cancelled": "ملغى"
+    "cancelled": "ملغى",
+    "in_procurement": "قيد الشراء",
+    "closed": "مغلق"
   },
   "donors": {
     "title": "المانحون",
@@ -704,6 +706,13 @@
       "lockedRate": "سعر {rate} بتاريخ {date} ({source})",
       "errors": {
         "noLines": "أضف بندًا واحدًا على الأقل"
+      },
+      "sourcingStatus": "حالة التوريد",
+      "sourcing": {
+        "not_sourced": "لم يُطرح",
+        "in_sourcing": "في طلب أسعار/مناقصة",
+        "ordered": "صدر أمر شراء",
+        "cancelled": "ملغى"
       }
     },
     "attachments": {
@@ -1287,7 +1296,195 @@
       "duplicatesTitle": "رقم الهاتف أو الحساب المصرفي مستخدم أيضاً لدى:"
     }
   },
-  "sourcing": {},
+  "sourcing": {
+    "title": "طلبات عروض الأسعار",
+    "intro": "طلبات عروض أسعار من بنود طلبات شراء معتمدة لمنحة واحدة ومكتب واحد.",
+    "add": "طلب عرض أسعار جديد",
+    "search": "بحث بالرقم أو العنوان",
+    "statusFilter": "الحالة",
+    "allStatuses": "كل الحالات",
+    "number": "الرقم",
+    "titleLabel": "العنوان",
+    "grant": "المنحة",
+    "statusLabel": "الحالة",
+    "method": {
+      "title": "طريقة الشراء",
+      "range": "{min}–{max} {currency}",
+      "minQuotations": "{count, plural, one {عرض واحد على الأقل} two {عرضان على الأقل} other {# عروض على الأقل}}",
+      "estimatedValue": "القيمة التقديرية (بأسعار الصرف المثبتة في طلبات الشراء)",
+      "required": "الطريقة المطلوبة",
+      "chosen": "الطريقة المستخدمة",
+      "tenantBand": "نطاق المنظمة",
+      "grantBand": "قاعدة المنحة",
+      "noGrantRule": "لا توجد قاعدة للمنحة",
+      "belowRequired": "الطريقة المستخدمة أدنى من المطلوبة. يتطلب الإصدار إعفاءً معتمدًا.",
+      "splitting": "احتمال تجزئة شراء: {count, plural, one {طلب شراء واحد} other {# طلبات شراء}} من نفس المكتب والمنحة وفئة الميزانية بإجمالي {total} {currency}، أعلى من الحد الأقصى لهذا النطاق {max} {currency}.",
+      "splittingAcknowledged": "تم الإقرار بالتنبيه."
+    },
+    "estimatedValue": "القيمة التقديرية",
+    "deadline": "آخر موعد للتقديم",
+    "issueDateLabel": "تاريخ الإصدار",
+    "draftNumber": "مسودة (لم يصدر بعد)",
+    "lineCount": "{count, plural, one {بند واحد} two {بندان} few {# بنود} many {# بندًا} other {# بند}}",
+    "invitationCount": "{count, plural, one {مورد مدعو} two {موردان مدعوان} few {# موردين مدعوين} many {# موردًا مدعوًا} other {# مورد مدعو}}",
+    "empty": "لا توجد طلبات عروض أسعار بعد.",
+    "previous": "السابق",
+    "next": "التالي",
+    "reissuedFrom": "أُعيد إصداره من طلب سابق — افتحه",
+    "reissuedTo": "أُعيد إصدار هذا الطلب — افتح الطلب الجديد",
+    "cancelReason": "ملغى: {reason}",
+    "status": {
+      "draft": "مسودة",
+      "issued": "صادر",
+      "closed": "أُغلق التقديم",
+      "opened": "تم الفتح",
+      "evaluated": "تم التقييم",
+      "awarded": "تمت الترسية",
+      "cancelled": "ملغى"
+    },
+    "methods": {
+      "direct": "شراء مباشر",
+      "rfq": "طلب عروض أسعار",
+      "tender": "مناقصة عامة"
+    },
+    "create": {
+      "title": "طلب عرض أسعار جديد",
+      "intro": "اختر بنود طلبات شراء معتمدة غير مطروحة في طلب أسعار أو مناقصة أخرى. يجب أن تكون كل البنود لمنحة واحدة ومكتب واحد.",
+      "rfqTitle": "عنوان الطلب",
+      "search": "بحث في بنود طلبات الشراء",
+      "oneGrant": "{count, plural, one {بند واحد مختار} other {# بنود مختارة}} من المنحة {grant}. يمكن إضافة بنود من نفس المنحة والمكتب فقط.",
+      "empty": "لا توجد بنود طلبات شراء معتمدة بانتظار الطرح.",
+      "selectPr": "اختيار كل بنود {number}",
+      "selectLine": "اختيار البند {line}",
+      "otherGrant": "منحة أو مكتب مختلف",
+      "description": "الوصف",
+      "quantity": "الكمية",
+      "unit": "الوحدة",
+      "estimate": "تقدير طلب الشراء",
+      "budgetLine": "بند الميزانية",
+      "create": "{count, plural, =0 {إنشاء الطلب} one {إنشاء الطلب ببند واحد} other {إنشاء الطلب بـ # بنود}}"
+    },
+    "form": {
+      "title": "بيانات الطلب",
+      "saved": "تم حفظ الطلب.",
+      "rfqTitle": "العنوان",
+      "issueDate": "تاريخ الإصدار",
+      "deadlineDate": "تاريخ آخر موعد",
+      "deadlineTime": "وقت آخر موعد ({timeZone})",
+      "currency": "عملة العروض",
+      "offerValidityDays": "صلاحية العرض (أيام)",
+      "chosenMethod": "الطريقة المستخدمة",
+      "deliveryPlace": "مكان التسليم",
+      "deliveryTerms": "شروط التسليم",
+      "paymentTerms": "شروط الدفع",
+      "splitAwardAllowed": "السماح بتجزئة الترسية بين الموردين حسب البند",
+      "linesTitle": "البنود",
+      "linesIntro": "الكميات والوحدات مأخوذة من بنود طلب الشراء ولا تتغير؛ يمكنك إعادة صياغة الوصف والمواصفات للموردين.",
+      "lineDescription": "الوصف",
+      "lineSpecifications": "المواصفات"
+    },
+    "criteria": {
+      "title": "معايير التقييم",
+      "saved": "تم حفظ المعايير.",
+      "stageTotal": "{stage}: {total}٪",
+      "stage": "المرحلة",
+      "kind": "النوع",
+      "code": "الرمز",
+      "nameAr": "الاسم (عربي)",
+      "nameEn": "الاسم (إنجليزي)",
+      "weight": "الوزن ٪",
+      "price": "السعر",
+      "priceYes": "السعر",
+      "remove": "حذف المعيار",
+      "add": "إضافة معيار",
+      "stages": {
+        "single": "مرحلة واحدة",
+        "technical": "فني",
+        "financial": "مالي"
+      },
+      "kinds": {
+        "essential": "أساسي (مقبول/مرفوض)",
+        "weighted": "موزون"
+      }
+    },
+    "invitations": {
+      "title": "الموردون المدعوون",
+      "saved": "تم حفظ الدعوات.",
+      "count": "{count} مدعو · الحد الأدنى {required}",
+      "channel": "وسيلة الدعوة",
+      "empty": "لم تتم دعوة أي مورد بعد.",
+      "supplier": "المورد",
+      "invitedOn": "تاريخ الدعوة",
+      "remove": "حذف الدعوة",
+      "channels": {
+        "email": "بريد إلكتروني",
+        "whatsapp": "واتساب",
+        "in_person": "شخصيًا",
+        "newspaper": "صحيفة",
+        "website": "موقع إلكتروني",
+        "notice_board": "لوحة الإعلانات"
+      }
+    },
+    "actions": {
+      "issue": "إصدار الطلب",
+      "reissue": "إعادة الإصدار",
+      "cancel": "إلغاء الطلب",
+      "issueTitle": "إصدار هذا الطلب؟",
+      "issueIntro": "يحصل الطلب على رقمه ويمكن إرساله للموردين المدعوين. بعدها تُسجَّل العروض كمستلمة فقط حتى انقضاء الموعد.",
+      "splittingPrompt": "إجمالي هذه المشتريات {total} {currency}، أعلى من الحد الأقصى للنطاق {max} {currency}. وضّح لماذا لا يُعد هذا تجزئة للشراء.",
+      "splittingComment": "تعليق الإقرار",
+      "issueConfirm": "إصدار",
+      "cancelTitle": "إلغاء هذا الطلب؟",
+      "cancelIntro": "تعود بنود طلبات الشراء إلى حالة لم يُطرح ويمكن استخدامها في طلب آخر.",
+      "cancelConfirm": "إلغاء الطلب",
+      "reissueTitle": "إعادة إصدار هذا الطلب؟",
+      "reissueIntro": "يُلغى هذا الطلب وتنتقل بنوده ومعاييره ودعواته إلى مسودة جديدة.",
+      "reissueConfirm": "إعادة الإصدار"
+    },
+    "lines": {
+      "title": "البنود",
+      "description": "الوصف",
+      "quantity": "الكمية",
+      "unit": "الوحدة",
+      "pr": "طلب الشراء"
+    },
+    "print": {
+      "button": "طباعة",
+      "error": "تعذرت طباعة الطلب.",
+      "chooseLanguage": "لغة الطباعة",
+      "arabic": "العربية",
+      "english": "الإنجليزية",
+      "unnumbered": "مسودة — لم يصدر بعد",
+      "titleAr": "طلب عرض أسعار",
+      "titleEn": "Request for Quotation",
+      "to": "إلى",
+      "supplierContact": "التواصل",
+      "office": "المكتب",
+      "subject": "الموضوع",
+      "issueDate": "تاريخ الإصدار",
+      "deadline": "آخر موعد للتقديم",
+      "currency": "عملة العرض",
+      "validity": "صلاحية العرض",
+      "days": "{count, plural, one {يوم واحد} two {يومان} few {# أيام} many {# يومًا} other {# يوم}}",
+      "deliveryPlace": "مكان التسليم",
+      "deliveryTerms": "شروط التسليم",
+      "paymentTerms": "شروط الدفع",
+      "intro": "يرجى تقديم أفضل أسعار الوحدة للأصناف أدناه.",
+      "description": "الوصف",
+      "quantity": "الكمية",
+      "unit": "الوحدة",
+      "criteria": "معايير التقييم",
+      "criterionWeighted": "{name}: {weight}٪",
+      "criterionEssential": "{name}: إلزامي",
+      "sealedNote": "يُقدَّم العرض في مظروف مغلق أو حسب التعليمات. قد تُرفض العروض المستلمة بعد الموعد.",
+      "printedAt": "طُبع في {date}",
+      "page": "صفحة {page} من {pages}",
+      "watermark": {
+        "DRAFT": "مسودة",
+        "CANCELLED": "ملغى"
+      }
+    }
+  },
   "analysis": {},
   "orders": {},
   "receiving": {},

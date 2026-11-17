@@ -2,14 +2,21 @@
 
 // Read-only PR lines. After submission each line also shows the rate, rate date and source it
 // was locked with and its amount in the grant currency (FR-028).
-import { formatAmount, formatDate, type PrDetail } from '@ngo/shared';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ngo/ui';
+import { formatAmount, formatDate, type PrDetail, type PrLineSourcingStatus } from '@ngo/shared';
+import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ngo/ui';
 import { useLocale, useTranslations } from 'next-intl';
 import { useOffices } from '@/features/grants/api';
 import { useUnits } from '@/features/setup/api';
 import { useGrantBudgetLines } from './api';
 import { trimDecimal } from './form-model';
 import { TotalsBar } from './pr-lines-table';
+
+function SourcingStatusBadge({ status }: { status: PrLineSourcingStatus }) {
+  const t = useTranslations('pr.lines.sourcing');
+  const variant =
+    status === 'ordered' ? 'default' : status === 'in_sourcing' ? 'secondary' : 'outline';
+  return <Badge variant={variant}>{t(status)}</Badge>;
+}
 
 export function PrLinesView({ pr }: { pr: PrDetail }) {
   const t = useTranslations('pr.lines');
@@ -18,6 +25,8 @@ export function PrLinesView({ pr }: { pr: PrDetail }) {
   const offices = useOffices();
   const budgetLines = useGrantBudgetLines(pr.grantId);
   const submitted = pr.submissionCycle > 0;
+  // 002 (FR-038): once approved, each line shows whether it is being sourced or ordered
+  const sourcing = ['approved', 'in_procurement', 'closed'].includes(pr.status);
 
   const unit = (id: string | null) => units.data?.data.find((u) => u.id === id)?.code ?? '—';
   const office = (id: string | null) => {
@@ -44,6 +53,7 @@ export function PrLinesView({ pr }: { pr: PrDetail }) {
               <TableHead>{t('budgetLine')}</TableHead>
               <TableHead>{t('location')}</TableHead>
               {submitted ? <TableHead className="text-end">{t('amountGrant')}</TableHead> : null}
+              {sourcing ? <TableHead>{t('sourcingStatus')}</TableHead> : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -90,6 +100,11 @@ export function PrLinesView({ pr }: { pr: PrDetail }) {
                     ) : (
                       '—'
                     )}
+                  </TableCell>
+                ) : null}
+                {sourcing ? (
+                  <TableCell>
+                    <SourcingStatusBadge status={l.sourcingStatus ?? 'not_sourced'} />
                   </TableCell>
                 ) : null}
               </TableRow>

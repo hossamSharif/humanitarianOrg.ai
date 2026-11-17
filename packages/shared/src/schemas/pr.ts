@@ -5,6 +5,7 @@
 import { z } from 'zod';
 import type { Money } from '../money';
 import type { PrAction, PrStatus } from '../pr-state';
+import type { PrLineSourcingStatus } from '../doc-types';
 import type { StepKind } from '../permissions';
 import { currencyCode, expectedVersion, isoDate, moneyString, uuid } from './common';
 
@@ -167,6 +168,8 @@ export interface PrLineView {
   rateSource: string | null;
   exchangeRateId: string | null;
   amountGrant: string | null;
+  /** 002 (FR-038): Not sourced, In RFQ/Tender, Ordered, Cancelled */
+  sourcingStatus?: PrLineSourcingStatus;
 }
 
 export interface PrAttachmentView {

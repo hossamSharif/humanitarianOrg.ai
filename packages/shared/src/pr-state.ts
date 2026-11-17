@@ -7,6 +7,10 @@ export const PR_STATUSES = [
   'pending_finance_check',
   'pending_approval',
   'approved',
+  // 002: the first sourcing of a line moves an approved PR on; it closes when every line is
+  // ordered or cancelled (FR-038). Both are set by the sourcing and PO services.
+  'in_procurement',
+  'closed',
   'returned',
   'rejected',
   'cancelled',
@@ -103,6 +107,8 @@ export function watermarkFor(status: PrStatus): PrintWatermark | null {
     case 'cancelled':
       return 'CANCELLED';
     case 'approved':
+    case 'in_procurement':
+    case 'closed':
       return null;
   }
 }

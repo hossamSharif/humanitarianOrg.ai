@@ -104,3 +104,64 @@ export function addDays(isoDate: string, days: number): string {
   const pad = (n: number, width = 2) => String(n).padStart(width, '0');
   return `${pad(shifted.getUTCFullYear(), 4)}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`;
 }
+
+// ---------------------------------------------------------------------------------------------
+// Wall-clock date + time in a time zone (002: sourcing deadlines are typed and shown in the
+// organization's time zone, never the browser's)
+// ---------------------------------------------------------------------------------------------
+
+const offsetFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/** How far `timeZone` is ahead of UTC at `instant`, in milliseconds. */
+function zoneOffsetMs(instant: number, timeZone: string): number {
+  let formatter = offsetFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    offsetFormatters.set(timeZone, formatter);
+  }
+  const parts = formatter.formatToParts(new Date(instant));
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  const asUtc = Date.UTC(
+    get('year'),
+    get('month') - 1,
+    get('day'),
+    get('hour'),
+    get('minute'),
+    get('second')
+  );
+  return asUtc - Math.floor(instant / 1000) * 1000;
+}
+
+/** ISO date (YYYY-MM-DD) and HH:mm on the wall clock of `timeZone` → ISO instant (UTC). */
+export function zonedDateTimeToIso(isoDate: string, time: string, timeZone: string): string {
+  const [y, m, d] = isoDate.split('-').map(Number) as [number, number, number];
+  const [hh, mm] = time.split(':').map(Number) as [number, number];
+  const wall = Date.UTC(y, m - 1, d, hh, mm);
+  // a second pass settles a daylight-saving boundary
+  let instant = wall - zoneOffsetMs(wall, timeZone);
+  instant = wall - zoneOffsetMs(instant, timeZone);
+  return new Date(instant).toISOString();
+}
+
+/** ISO instant → its wall-clock date (YYYY-MM-DD) and time (HH:mm) in `timeZone`. */
+export function isoToZonedDateTime(
+  instant: string,
+  timeZone: string
+): { date: string; time: string } {
+  const ms = Date.parse(instant);
+  const local = new Date(ms + zoneOffsetMs(ms, timeZone));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return {
+    date: `${local.getUTCFullYear()}-${pad(local.getUTCMonth() + 1)}-${pad(local.getUTCDate())}`,
+    time: `${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}`,
+  };
+}

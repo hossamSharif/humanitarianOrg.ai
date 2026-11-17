@@ -11,6 +11,7 @@ import {
   type PrListItem,
   type PrListQuery,
   type PrListSortField,
+  type PrLineSourcingStatus,
   type PrStatus,
   type PrType,
   type StepKind,
@@ -108,6 +109,8 @@ export interface PrLineRecord extends PrLineValues {
   rateSource: string | null;
   exchangeRateId: string | null;
   amountGrant: string | null;
+  /** 002: not_sourced → in_sourcing → ordered, or cancelled (set by sourcing and POs) */
+  sourcingStatus?: PrLineSourcingStatus;
 }
 
 /** Rate and grant-currency amount copied onto a line at submission (FR-028). */
@@ -385,6 +388,7 @@ interface LineDbRow {
   rate_source: string | null;
   exchange_rate_id: string | null;
   amount_grant: string | null;
+  sourcing_status: PrLineSourcingStatus;
 }
 
 function toLine(r: LineDbRow): PrLineRecord {
@@ -406,6 +410,7 @@ function toLine(r: LineDbRow): PrLineRecord {
     rateSource: r.rate_source,
     exchangeRateId: r.exchange_rate_id,
     amountGrant: r.amount_grant,
+    sourcingStatus: r.sourcing_status,
   };
 }
 
@@ -477,7 +482,7 @@ export class PrRepository implements PrStore {
              unit_cost::text as unit_cost, line_total::text as line_total,
              currency::text as currency, budget_line_id, location_office_id, activity_id,
              rate_to_base::text as rate_to_base, rate_date::text as rate_date, rate_source,
-             exchange_rate_id, amount_grant::text as amount_grant
+             exchange_rate_id, amount_grant::text as amount_grant, sourcing_status
       from public.pr_line where pr_id = ${prId}
       order by line_no`;
     return rows.map(toLine);

@@ -31,6 +31,7 @@ export * from './schemas/doc-actions';
 export * from './schemas/doc-attachment';
 export * from './schemas/procurement-config';
 export * from './schemas/supplier';
+export * from './schemas/sourcing';
 export * from './doc-types';
 export * from './procurement';
 export * from './accounting';

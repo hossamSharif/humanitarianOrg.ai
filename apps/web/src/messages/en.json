@@ -380,7 +380,9 @@
     "approved": "Approved",
     "returned": "Returned",
     "rejected": "Rejected",
-    "cancelled": "Cancelled"
+    "cancelled": "Cancelled",
+    "in_procurement": "In procurement",
+    "closed": "Closed"
   },
   "donors": {
     "title": "Donors",
@@ -704,6 +706,13 @@
       "lockedRate": "Rate {rate} of {date} ({source})",
       "errors": {
         "noLines": "Add at least one line"
+      },
+      "sourcingStatus": "Sourcing",
+      "sourcing": {
+        "not_sourced": "Not sourced",
+        "in_sourcing": "In RFQ/Tender",
+        "ordered": "Ordered",
+        "cancelled": "Cancelled"
       }
     },
     "attachments": {
@@ -1287,7 +1296,195 @@
       "duplicatesTitle": "The phone or bank account is also used by:"
     }
   },
-  "sourcing": {},
+  "sourcing": {
+    "title": "Requests for quotation",
+    "intro": "RFQs raised from approved purchase requisition lines of one grant and office.",
+    "add": "New RFQ",
+    "search": "Search by number or title",
+    "statusFilter": "Status",
+    "allStatuses": "All statuses",
+    "number": "Number",
+    "titleLabel": "Title",
+    "grant": "Grant",
+    "statusLabel": "Status",
+    "method": {
+      "title": "Procurement method",
+      "range": "{min}–{max} {currency}",
+      "minQuotations": "{count, plural, one {minimum # quotation} other {minimum # quotations}}",
+      "estimatedValue": "Estimated value (from the PRs' locked rates)",
+      "required": "Required method",
+      "chosen": "Method used",
+      "tenantBand": "Organization band",
+      "grantBand": "Grant rule",
+      "noGrantRule": "No grant rule",
+      "belowRequired": "The method used is below the required method. Issuing needs an approved waiver.",
+      "splitting": "Possible split purchase: {count, plural, one {# requisition} other {# requisitions}} of the same office, grant and budget category total {total} {currency}, above this band's maximum of {max} {currency}.",
+      "splittingAcknowledged": "The warning was acknowledged."
+    },
+    "estimatedValue": "Estimated value",
+    "deadline": "Submission deadline",
+    "issueDateLabel": "Issue date",
+    "draftNumber": "Draft (not yet issued)",
+    "lineCount": "{count, plural, one {# line} other {# lines}}",
+    "invitationCount": "{count, plural, one {# supplier invited} other {# suppliers invited}}",
+    "empty": "No RFQs yet.",
+    "previous": "Previous",
+    "next": "Next",
+    "reissuedFrom": "Re-issued from an earlier RFQ — open it",
+    "reissuedTo": "This RFQ was re-issued — open the new one",
+    "cancelReason": "Cancelled: {reason}",
+    "status": {
+      "draft": "Draft",
+      "issued": "Issued",
+      "closed": "Closed for submissions",
+      "opened": "Opened",
+      "evaluated": "Evaluated",
+      "awarded": "Awarded",
+      "cancelled": "Cancelled"
+    },
+    "methods": {
+      "direct": "Direct purchase",
+      "rfq": "RFQ",
+      "tender": "Open tender"
+    },
+    "create": {
+      "title": "New RFQ",
+      "intro": "Choose approved PR lines that are not in another RFQ or tender. All lines must belong to one grant and one office.",
+      "rfqTitle": "RFQ title",
+      "search": "Search PR lines",
+      "oneGrant": "{count, plural, one {# line} other {# lines}} selected from grant {grant}. Only lines of the same grant and office can be added.",
+      "empty": "No approved PR lines are waiting to be sourced.",
+      "selectPr": "Select every line of {number}",
+      "selectLine": "Select line {line}",
+      "otherGrant": "Different grant or office",
+      "description": "Description",
+      "quantity": "Quantity",
+      "unit": "Unit",
+      "estimate": "PR estimate",
+      "budgetLine": "Budget line",
+      "create": "{count, plural, =0 {Create RFQ} one {Create RFQ with # line} other {Create RFQ with # lines}}"
+    },
+    "form": {
+      "title": "RFQ details",
+      "saved": "RFQ saved.",
+      "rfqTitle": "Title",
+      "issueDate": "Issue date",
+      "deadlineDate": "Deadline date",
+      "deadlineTime": "Deadline time ({timeZone})",
+      "currency": "Quotation currency",
+      "offerValidityDays": "Offer validity (days)",
+      "chosenMethod": "Method used",
+      "deliveryPlace": "Delivery place",
+      "deliveryTerms": "Delivery terms",
+      "paymentTerms": "Payment terms",
+      "splitAwardAllowed": "Allow the award to be split between suppliers by line",
+      "linesTitle": "Lines",
+      "linesIntro": "Quantities and units come from the PR lines and cannot change; you may reword the description and specifications for suppliers.",
+      "lineDescription": "Description",
+      "lineSpecifications": "Specifications"
+    },
+    "criteria": {
+      "title": "Evaluation criteria",
+      "saved": "Criteria saved.",
+      "stageTotal": "{stage}: {total}%",
+      "stage": "Stage",
+      "kind": "Type",
+      "code": "Code",
+      "nameAr": "Name (Arabic)",
+      "nameEn": "Name (English)",
+      "weight": "Weight %",
+      "price": "Price",
+      "priceYes": "Price",
+      "remove": "Remove criterion",
+      "add": "Add criterion",
+      "stages": {
+        "single": "Single stage",
+        "technical": "Technical",
+        "financial": "Financial"
+      },
+      "kinds": {
+        "essential": "Essential (pass/fail)",
+        "weighted": "Weighted"
+      }
+    },
+    "invitations": {
+      "title": "Invited suppliers",
+      "saved": "Invitations saved.",
+      "count": "{count} invited · minimum {required}",
+      "channel": "Channel",
+      "empty": "No supplier invited yet.",
+      "supplier": "Supplier",
+      "invitedOn": "Invited on",
+      "remove": "Remove invitation",
+      "channels": {
+        "email": "Email",
+        "whatsapp": "WhatsApp",
+        "in_person": "In person",
+        "newspaper": "Newspaper",
+        "website": "Website",
+        "notice_board": "Notice board"
+      }
+    },
+    "actions": {
+      "issue": "Issue RFQ",
+      "reissue": "Re-issue",
+      "cancel": "Cancel RFQ",
+      "issueTitle": "Issue this RFQ?",
+      "issueIntro": "The RFQ gets its number and can be sent to the invited suppliers. Quotations are then only logged as received until the deadline passes.",
+      "splittingPrompt": "These purchases together total {total} {currency}, above the band maximum of {max} {currency}. Explain why this is not a split purchase.",
+      "splittingComment": "Acknowledgement comment",
+      "issueConfirm": "Issue",
+      "cancelTitle": "Cancel this RFQ?",
+      "cancelIntro": "The PR lines return to Not sourced and can be used in another RFQ.",
+      "cancelConfirm": "Cancel RFQ",
+      "reissueTitle": "Re-issue this RFQ?",
+      "reissueIntro": "This RFQ is cancelled and a new draft takes its lines, criteria and invitations.",
+      "reissueConfirm": "Re-issue"
+    },
+    "lines": {
+      "title": "Lines",
+      "description": "Description",
+      "quantity": "Quantity",
+      "unit": "Unit",
+      "pr": "Purchase requisition"
+    },
+    "print": {
+      "button": "Print",
+      "error": "The RFQ could not be printed.",
+      "chooseLanguage": "Print language",
+      "arabic": "Arabic",
+      "english": "English",
+      "unnumbered": "Draft — not yet issued",
+      "titleAr": "طلب عرض أسعار",
+      "titleEn": "Request for Quotation",
+      "to": "To",
+      "supplierContact": "Contact",
+      "office": "Office",
+      "subject": "Subject",
+      "issueDate": "Issue date",
+      "deadline": "Submit by",
+      "currency": "Quote in",
+      "validity": "Offer valid for",
+      "days": "{count, plural, one {# day} other {# days}}",
+      "deliveryPlace": "Delivery place",
+      "deliveryTerms": "Delivery terms",
+      "paymentTerms": "Payment terms",
+      "intro": "Please quote your best unit prices for the items below.",
+      "description": "Description",
+      "quantity": "Quantity",
+      "unit": "Unit",
+      "criteria": "Evaluation criteria",
+      "criterionWeighted": "{name}: {weight}%",
+      "criterionEssential": "{name}: required",
+      "sealedNote": "Submit your quotation in a sealed envelope or as instructed. Quotations received after the deadline may be rejected.",
+      "printedAt": "Printed {date}",
+      "page": "Page {page} of {pages}",
+      "watermark": {
+        "DRAFT": "DRAFT",
+        "CANCELLED": "CANCELLED"
+      }
+    }
+  },
   "analysis": {},
   "orders": {},
   "receiving": {},

@@ -35,7 +35,7 @@ export interface PrPrintDeps {
   now?: () => Date;
 }
 
-class SupabasePrintAssets implements PrintAssets {
+export class SupabasePrintAssets implements PrintAssets {
   constructor(private readonly accessToken: string) {}
 
   async logoUrl(path: string): Promise<string | null> {

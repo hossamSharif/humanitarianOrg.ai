@@ -51,6 +51,13 @@ export const queryKeys = {
     list: (filters: Record<string, unknown>) => ['suppliers', 'list', filters] as const,
     detail: (id: string) => ['suppliers', 'detail', id] as const,
   },
+  sourcing: {
+    all: ['sourcing'] as const,
+    list: (kind: 'rfq' | 'tender', filters: Record<string, unknown>) =>
+      ['sourcing', kind, 'list', filters] as const,
+    detail: (id: string) => ['sourcing', 'detail', id] as const,
+    prLines: (filters: Record<string, unknown>) => ['sourcing', 'pr-lines', filters] as const,
+  },
   staffPayees: {
     all: ['staff-payees'] as const,
     list: (filters: Record<string, unknown>) => ['staff-payees', 'list', filters] as const,

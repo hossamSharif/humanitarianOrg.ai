@@ -30,9 +30,11 @@ import { DeductionTypeRepository } from '../repositories/deduction-type.reposito
 import { MethodBandRepository } from '../repositories/method-band.repository';
 import { PaymentCategoryRepository } from '../repositories/payment-category.repository';
 import { ProcurementSettingRepository } from '../repositories/procurement-setting.repository';
+import { SourcingEventRepository } from '../repositories/sourcing-event.repository';
 import { SupplierCategoryRepository } from '../repositories/supplier-category.repository';
 import type { RequestContext } from '../types/context';
 import { ensureTenantSeeds } from './doc-adapters/binding';
+import { splittingWarningFor } from './sourcing.service';
 
 export interface ProcurementConfigRepos {
   settings: ProcurementSettingRepository;
@@ -40,6 +42,7 @@ export interface ProcurementConfigRepos {
   deductions: DeductionTypeRepository;
   paymentCategories: PaymentCategoryRepository;
   supplierCategories: SupplierCategoryRepository;
+  events: SourcingEventRepository;
 }
 
 export interface ProcurementConfigDeps {
@@ -57,6 +60,7 @@ export const defaultProcurementConfigDeps: ProcurementConfigDeps = {
         deductions: new DeductionTypeRepository(tx.sql, ctx.tenantId),
         paymentCategories: new PaymentCategoryRepository(tx.sql, ctx.tenantId),
         supplierCategories: new SupplierCategoryRepository(tx.sql, ctx.tenantId),
+        events: new SourcingEventRepository(tx.sql, ctx.tenantId),
       });
     }),
 };
@@ -151,7 +155,7 @@ export class ProcurementConfigService {
    */
   resolveMethod(ctx: RequestContext, input: ResolveMethodInput): Promise<ResolveMethodResponse> {
     const ids = [...new Set(input.prLineIds)];
-    return this.deps.run(ctx, async ({ bands }) => {
+    return this.deps.run(ctx, async ({ bands, settings, events }) => {
       const lines = await bands.prLines(ids);
       if (lines.length !== ids.length) throw new AppError('NOT_FOUND', 'PR line not found');
 
@@ -183,8 +187,17 @@ export class ProcurementConfigService {
         tenantBands,
         grantBands,
       });
-      // The anti-splitting warning (FR-053) needs sourcing events; US3 adds it here.
-      return { ...resolved, currency: await bands.doaReferenceCurrency() };
+      const splittingWarning = await splittingWarningFor(
+        { events, settings },
+        await events.prLines(ids, { lock: false }),
+        resolved,
+        null
+      );
+      return {
+        ...resolved,
+        currency: await bands.doaReferenceCurrency(),
+        ...(splittingWarning ? { splittingWarning } : {}),
+      };
     });
   }
 
